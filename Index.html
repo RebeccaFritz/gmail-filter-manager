@@ -58,7 +58,7 @@
       color: #c5221f;
     }
 
-    .sync-body.sucess {
+    .sync-body.success {
       background: #e6f4ea; 
       color: #137333;
     }
@@ -619,17 +619,20 @@
 
   // ── Sync Filters ──────────────────────────────────────────────────────────
   function sync() {
+    let syncElement = document.getElementById('sync-body');
+    syncElement.classList.remove('error');
+    syncElement.classList.remove('success');
+
     google.script.run
       .withSuccessHandler(res => {
-        document.getElementById('sync-body').classList.add('visible');
-        document.getElementById('sync-body').classList.remove('error');
-        document.getElementById('sync-body').classList.add('sucess');
-        document.getElementById('sync-body').innerHTML = sync + "Synced with Gmail filters";
+        syncElement.classList.add('visible');
+        syncElement.classList.add('success');
+        syncElement.innerHTML = syncIcon + "Synced with Gmail filters";
       })
       .withFailureHandler(err => {
-        document.getElementById('sync-body').classList.add('visible');
-        document.getElementById('sync-body').classList.add('error');
-        document.getElementById('sync-body').innerHTML = syncError + "Failed to sync with Gmail filters";
+        syncElement.classList.add('visible');
+        syncElement.classList.add('error');
+        syncElement.innerHTML = syncErrorIcon + "Failed to sync with Gmail filters";
       })
       .syncFilters();
   }
@@ -688,14 +691,13 @@
   }
 
   // ─── Assets (sourced from tabler.io) ────────────────────────────────────
-  var syncError = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh-alert">
+  var syncErrorIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh-alert">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
                     <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
                     <path d="M12 9l0 3" /><path d="M12 15l.01 0" />
                   </svg>`;
-                  
-  var sync = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh">
+  var syncIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
                     <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
