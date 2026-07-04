@@ -68,6 +68,12 @@
       gap: 5px;
     }
 
+    @media screen and (max-width: 768px) {
+      .sync-text {
+        display: none;
+      }
+    }
+
     /* ── Tabs ── */
     .tabs {
       display: flex;
@@ -356,7 +362,10 @@
   </svg>
   <h1>Gmail Filter Manager</h1>
   <div class="sync-container">
-    <div class="sync-body" id="sync-body"></div>
+    <div class="sync-body" id="sync-body">
+      <div class="icon-container" id="icon-container"></div>
+      <div class="sync-text" id="sync-text"></div>
+    </div>
   </div>
   <nav class="tabs">
     <div class="tab active" onclick="switchTab('add')">Add Filters</div>
@@ -620,6 +629,8 @@
   // ── Sync Filters ──────────────────────────────────────────────────────────
   function sync() {
     let syncElement = document.getElementById('sync-body');
+    let iconElement = document.getElementById('icon-container');
+    let textElement = document.getElementById('sync-text');
     syncElement.classList.remove('error');
     syncElement.classList.remove('success');
 
@@ -627,12 +638,14 @@
       .withSuccessHandler(res => {
         syncElement.classList.add('visible');
         syncElement.classList.add('success');
-        syncElement.innerHTML = syncIcon + "Synced with Gmail filters";
+        iconElement.innerHTML = syncIcon;
+        textElement.innerHTML = "Synced with Gmail filters";
       })
       .withFailureHandler(err => {
         syncElement.classList.add('visible');
         syncElement.classList.add('error');
-        syncElement.innerHTML = syncErrorIcon + "Failed to sync with Gmail filters";
+        iconElement.innerHTML = syncErrorIcon;
+        textElement.innerHTML = "Failed to sync with Gmail filters";
       })
       .syncFilters();
   }
