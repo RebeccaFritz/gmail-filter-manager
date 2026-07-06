@@ -5,9 +5,17 @@
  * Deploy via: Apps Script editor → Deploy → New deployment → Web app.
  */
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  return HtmlService.createTemplateFromFile('Index').evaluate()
     .setTitle('Gmail Filter Manager')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+}
+
+/**
+ * include directly injects html file snippets into a file when called with printing scriptlets
+ * @param {string} filename
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 // ─── UI handler (called by the page via google.script.run) ───────────────────

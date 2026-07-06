@@ -1,0 +1,187 @@
+<script>
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['add','view'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'view') loadFilters();
+  }
+
+  // ── Add Filters ───────────────────────────────────────────────────────────
+  function handleRun() {
+    const input = document.getElementById('input').value.trim();
+    const validationMsg = document.getElementById('validationMsg');
+
+    if (!input) { validationMsg.textContent = 'Please enter at least one entry.'; return; }
+    validationMsg.textContent = '';
+
+    const lines = input.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('//'));
+    for (const line of lines) {
+      if (/^DEL\s+/i.test(line)) continue;
+      const isKV = line.split(',').some(t => /^\s*\w+:/.test(t));
+      if (isKV) {
+        if (!/from\s*:|to\s*:/.test(line))
+          { validationMsg.textContent = `Missing from: or to: in "${line}"`; return; }
+        if (!/label\s*:/.test(line))
+          { validationMsg.textContent = `Missing label: in "${line}"`; return; }
+      } else {
+        const parts = line.split(',').map(p => p.trim());
+        if (!parts[0].includes('@'))
+          { validationMsg.textContent = `Invalid email: "${parts[0]}"`; return; }
+        if (!parts[1])
+          { validationMsg.textContent = `Missing label for: "${parts[0]}"`; return; }
+      }
+    }
+
+    setLoading(true);
+    clearLog();
+    google.script.run
+      .withSuccessHandler(onSuccess)
+      .withFailureHandler(onFailure)
+      .addFiltersFromUI(input);
+  }
+
+  function onSuccess(results) {
+    setLoading(false);
+    showLog(results);
+  }
+
+  function onFailure(err) {
+    setLoading(false);
+    document.getElementById('validationMsg').textContent = 'Error: ' + err.message;
+  }
+
+  function setLoading(on) {
+    document.getElementById('runBtn').disabled = on;
+    document.getElementById('spinner').classList.toggle('visible', on);
+  }
+
+  function clearInput() {
+    document.getElementById('input').value = '';
+    document.getElementById('validationMsg').textContent = '';
+    clearLog();
+  }
+
+  function clearLog() {
+    document.getElementById('logRows').innerHTML = '';
+    document.getElementById('log').classList.remove('visible');
+  }
+
+  function showLog(results) {
+    const header  = document.getElementById('logHeader');
+    const logRows = document.getElementById('logRows');
+
+    const created = results.filter(r => r.status === 'created').length;
+    const skipped = results.filter(r => r.status === 'skipped').length;
+    const errors  = results.filter(r => r.status === 'error').length;
+    header.textContent = `Results — ${created} created · ${skipped} skipped · ${errors} error${errors !== 1 ? 's' : ''}`;
+
+    logRows.innerHTML = '';
+    for (const r of results) {
+      const badgeClass = r.status === 'created' ? 'badge-created'
+                       : r.status === 'deleted' ? 'badge-created'
+                       : r.status === 'skipped' ? 'badge-skipped' : 'badge-error';
+      const row = document.createElement('div');
+      row.className = 'log-row';
+      row.innerHTML = `
+        <span class="badge ${badgeClass}">${r.status}</span>
+        <span class="log-email">${esc(r.criteriaStr)}</span>
+        <span class="log-detail">${esc(r.actionsStr ? '→ ' + r.actionsStr : '')} ${esc(r.message || '')}</span>
+      `;
+      logRows.appendChild(row);
+    }
+    document.getElementById('log').classList.add('visible');
+  }
+
+  // ── Sync Filters ──────────────────────────────────────────────────────────
+  function sync() {
+    let syncElement = document.getElementById('sync-body');
+    let iconElement = document.getElementById('icon-container');
+    let textElement = document.getElementById('sync-text');
+    syncElement.classList.remove('error');
+    syncElement.classList.remove('success');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        syncElement.classList.add('visible');
+        syncElement.classList.add('success');
+        iconElement.innerHTML = syncIcon;
+        textElement.innerHTML = "Synced with Gmail filters";
+      })
+      .withFailureHandler(err => {
+        syncElement.classList.add('visible');
+        syncElement.classList.add('error');
+        iconElement.innerHTML = syncErrorIcon;
+        textElement.innerHTML = "Failed to sync with Gmail filters";
+      })
+      .syncFilters();
+  }
+
+  sync(); 
+
+  // ── View Filters ──────────────────────────────────────────────────────────
+  let filtersLoaded = false;
+
+  function loadFilters() {
+    if (filtersLoaded) return;
+    google.script.run
+      .withSuccessHandler(renderTable)
+      .withFailureHandler(err => {
+        document.getElementById('tableWrap').innerHTML =
+          `<div class="empty-state">Failed to load filters: ${esc(err.message)}</div>`;
+      })
+      .getFiltersForUI();
+  }
+
+  function renderTable(rows) {
+    filtersLoaded = true;
+    const wrap = document.getElementById('tableWrap');
+
+    if (!rows || rows.length === 0) {
+      wrap.innerHTML = '<div class="empty-state">No filters yet. Add some using the Add Filters tab.</div>';
+      return;
+    }
+
+    const tableRows = rows.map(r => `
+      <tr>
+        <td class="email">${esc(r.criteria)}</td>
+        <td>${esc(r.actions)}</td>
+        <td>${esc(r.lastSynced || '—')}</td>
+      </tr>
+    `).join('');
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Criteria</th>
+            <th>Actions</th>
+            <th>Last Synced</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    `;
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ─── Assets (sourced from tabler.io) ────────────────────────────────────
+  var syncErrorIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh-alert">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                    <path d="M12 9l0 3" /><path d="M12 15l.01 0" />
+                  </svg>`;
+  var syncIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-refresh">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                  </svg>`;
+</script>
