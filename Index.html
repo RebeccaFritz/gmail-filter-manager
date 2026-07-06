@@ -5,636 +5,180 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gmail Filter Manager</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px;
-      color: #202124;
-      background: #f8f9fa;
-      min-height: 100vh;
-    }
-
-    /* ── Header ── */
-    header {
-      background: #fff;
-      border-bottom: 1px solid #dadce0;
-      padding: 0 32px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      height: 56px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    header svg { flex-shrink: 0; }
-
-    header h1 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #202124;
-    }
-
-    /* ── Tabs ── */
-    .tabs {
-      display: flex;
-      gap: 0;
-      margin-left: auto;
-    }
-
-    .tab {
-      padding: 0 20px;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      font-size: 14px;
-      font-weight: 500;
-      color: #5f6368;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: color 0.15s, border-color 0.15s;
-      user-select: none;
-    }
-
-    .tab:hover { color: #1a73e8; }
-    .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
-
-    /* ── Main layout ── */
-    main {
-      margin: 32px auto;
-      padding: 0 24px;
-    }
-
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* ── Card ── */
-    .card {
-      background: #fff;
-      border: 1px solid #dadce0;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 20px;
-    }
-
-    .card-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .card-hint {
-      color: #5f6368;
-      font-size: 13px;
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-
-    .card-hint code {
-      background: #f1f3f4;
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-size: 12px;
-      font-family: 'Roboto Mono', monospace;
-    }
-
-    /* ── Textarea ── */
-    textarea {
-      width: 100%;
-      min-height: 245px;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      padding: 12px 14px;
-      font-family: 'Roboto Mono', 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.7;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.15s;
-      color: #202124;
-    }
-    textarea:focus { border-color: #1a73e8; }
-
-    .validation-msg {
-      font-size: 12px;
-      color: #d93025;
-      min-height: 18px;
-      margin-top: 6px;
-    }
-
-    /* ── Actions ── */
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    button {
-      padding: 9px 22px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      transition: background 0.15s, opacity 0.15s;
-    }
-    button:disabled { opacity: 0.45; cursor: default; }
-
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: #1557b0; }
-
-    .btn-ghost { background: transparent; color: #1a73e8; padding: 9px 12px; }
-    .btn-ghost:hover:not(:disabled) { background: #f1f3f4; }
-
-    /* ── Spinner ── */
-    .spinner {
-      display: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid #dadce0;
-      border-top-color: #1a73e8;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
-    }
-    .spinner.visible { display: inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Results log ── */
-    .log {
-      margin-top: 16px;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      overflow: hidden;
-      display: none;
-    }
-    .log.visible { display: block; }
-
-    .log-header {
-      font-size: 11px;
-      font-weight: 600;
-      color: #5f6368;
-      padding: 7px 14px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #dadce0;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .log-body { max-height: 220px; overflow-y: auto; }
-
-    .log-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 14px;
-      border-bottom: 1px solid #f1f3f4;
-      font-size: 13px;
-    }
-    .log-row:last-child { border-bottom: none; }
-
-    .badge {
-      flex-shrink: 0;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .badge-created { background: #e6f4ea; color: #137333; }
-    .badge-skipped { background: #fef7e0; color: #b06000; }
-    .badge-error   { background: #fce8e6; color: #c5221f; }
-
-    .log-email  { font-family: monospace; color: #3c4043; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .log-detail { color: #80868b; font-size: 12px; white-space: nowrap; }
-
-    /* ── Filters table ── */
-    .table-wrap {
-      overflow-x: auto;
-      border-radius: 6px;
-      border: 1px solid #dadce0;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    thead tr { background: #f8f9fa; }
-
-    th {
-      text-align: left;
-      padding: 10px 14px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #5f6368;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid #dadce0;
-      white-space: nowrap;
-    }
-
-    td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #f1f3f4;
-      color: #3c4043;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f8f9fa; }
-
-    td.email { font-family: monospace; font-size: 12px; }
-
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .pill-yes { background: #e6f4ea; color: #137333; }
-    .pill-no  { background: #f1f3f4; color: #80868b; }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #80868b;
-      font-size: 13px;
-    }
-
-    .loading-state {
-      text-align: center;
-      padding: 32px;
-      color: #80868b;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .loading-state .spinner { display: inline-block; }
-
-    /* ── Table of Action and Criteria keys ── */
-
-    .scroll-panel {
-      height: 516.6px;
-      width: 100%;
-      border: 1px solid #ccc;
-      overflow: scroll;
-    }
-    
-    .scroll-panel table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: white;
-    }
-    
-    .scroll-panel th, .scroll-panel td {
-      border: 1px solid #ccc;
-      padding: 8px;
-    }
-
-    .scroll-panel code {
-      background: #f1f3f4;
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-size: 12px;
-      font-family: 'Roboto Mono', monospace; 
-    }
-    
-    .scroll-panel th {
-      background-color: #f8f9fa;
-      font-weight: 600;
-      text-align: center;
-    }
-  </style>
+  <?!= include('Stylesheet'); ?>
 </head>
 <body>
 
-<header>
-  <!-- Gmail-style envelope icon -->
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="28" height="28" rx="6" fill="#1a73e8"/>
-    <path d="M6 9.5C6 8.67 6.67 8 7.5 8h13c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-13C6.67 20 6 19.33 6 18.5v-9z" fill="white" fill-opacity="0.2"/>
-    <path d="M6 10l8 5.5L22 10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="6" y="9" width="16" height="11" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
-  </svg>
-  <h1>Gmail Filter Manager</h1>
-  <nav class="tabs">
-    <div class="tab active" onclick="switchTab('add')">Add Filters</div>
-    <div class="tab" onclick="switchTab('view')">View Filters</div>
-  </nav>
-</header>
+  <header>
+    <!-- Gmail-style envelope icon -->
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="28" height="28" rx="6" fill="#1a73e8"/>
+      <path d="M6 9.5C6 8.67 6.67 8 7.5 8h13c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-13C6.67 20 6 19.33 6 18.5v-9z" fill="white" fill-opacity="0.2"/>
+      <path d="M6 10l8 5.5L22 10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="6" y="9" width="16" height="11" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
+    </svg>
+    <h1>Gmail Filter Manager</h1>
+    <nav class="tabs">
+      <div class="tab active" onclick="switchTab('add')">Add Filters</div>
+      <div class="tab" onclick="switchTab('view')">View Filters</div>
+    </nav>
+  </header>
 
-<main>
-  <!-- ── Add Filters panel ── -->
-  <div class="panel active" id="panel-add">
-    <div style="display: flex; gap: 20px; max-width: 1250px; margin: 0 auto;">
-      <div style="flex: 1;">
-        <div class="card">
-          <div class="card-title">Add Filters</div>
-          <p class="card-hint">
-            One entry per line. Labels are created if they don't exist.<br>
-            <code>email@example.com, Label, skipInbox, markImportant</code> &nbsp;—&nbsp; shorthand (all fields positional)<br>
-            <code>from:email@example.com, label:Label, skipInbox:true, markImportant:true</code> &nbsp;—&nbsp; full key:value format<br>
-            To include multiple labels: <code>label:[Label One, Lable Two, etc]</code>
-          </p>
-          <textarea id="input" placeholder="careers@company.com, Work, true, true&#10;from:alerts@bank.com, label:[Finance, Alerts], skipInbox:true, hasAttachment:true""></textarea>
-          <div class="validation-msg" id="validationMsg"></div>
-          <div class="actions">
-            <button class="btn-primary" id="runBtn" onclick="handleRun()">Apply Filters</button>
-            <button class="btn-ghost" onclick="clearInput()">Clear</button>
-            <div class="spinner" id="spinner"></div>
+  <main>
+    <!-- ── Add Filters panel ── -->
+    <div class="panel active" id="panel-add">
+      <div style="display: flex; gap: 20px; max-width: 1250px; margin: 0 auto;">
+        <div style="flex: 1;">
+          <div class="card">
+            <div class="card-title">Add Filters</div>
+            <p class="card-hint">
+              One entry per line. Labels are created if they don't exist.<br>
+              <code>email@example.com, Label, skipInbox, markImportant</code> &nbsp;—&nbsp; shorthand (all fields positional)<br>
+              <code>from:email@example.com, label:Label, skipInbox:true, markImportant:true</code> &nbsp;—&nbsp; full key:value format<br>
+              To include multiple labels: <code>label:[Label One, Lable Two, etc]</code>
+            </p>
+            <textarea id="input" placeholder="careers@company.com, Work, true, true&#10;from:alerts@bank.com, label:[Finance, Alerts], skipInbox:true, hasAttachment:true""></textarea>
+            <div class="validation-msg" id="validationMsg"></div>
+            <div class="actions">
+              <button class="btn-primary" id="runBtn" onclick="handleRun()">Apply Filters</button>
+              <button class="btn-ghost" onclick="clearInput()">Clear</button>
+              <div class="spinner" id="spinner"></div>
+            </div>
+            <div class="log" id="log">
+              <div class="log-header" id="logHeader">Results</div>
+              <div class="log-body" id="logRows"></div>
+            </div>
           </div>
-          <div class="log" id="log">
-            <div class="log-header" id="logHeader">Results</div>
-            <div class="log-body" id="logRows"></div>
+        </div>
+      
+        <div style="flex: 1;">
+          <div class="scroll-panel">
+            <table>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Description</th>
+              </tr>
+              <tr>
+                <td><code>from:</code></td>
+                <td><code>email@example.com</code></td>
+                <td>Filter by sender email address</td>
+              </tr>
+              <tr>
+                <td><code>to:</code></td>
+                <td><code>email@example.com</code></td>
+                <td>Filter by recipient email address</td>
+              </tr>
+              <tr>
+                <td><code>subject:</code></td>
+                <td>any text</td>
+                <td>Filter by email subject line</td>
+              </tr>
+              <tr>
+                <td><code>query:</code></td>
+                <td>any text or phrase</td>
+                <td>Filter by email content containing specific words/phrases</td>
+              </tr>
+              <tr>
+                <td><code>negatedQuery:</code></td>
+                <td>any text or phrase</td>
+                <td>Filter by email content NOT containing specific words/phrases</td>
+              </tr>
+              <tr>
+                <td><code>hasAttachment:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>true to filter only emails with attachments</td>
+              </tr>
+              <tr>
+                <td><code>excludeChats:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>true to exclude chat messages from filter</td>
+              </tr>
+              <tr>
+                <td><code>size:</code></td>
+                <td>any number of bytes (e.g. <code>1000000</code>)</td>
+                <td>Used with <code>sizeComparison:</code> to filter by attachment size</td>
+              </tr>
+              <tr>
+                <td><code>sizeComparison:</code></td>
+                <td><code>larger</code> or <code>smaller</code></td>
+                <td>Used with <code>size:</code> to filter by attachment size</td>
+              </tr>
+              <tr>
+                <td><code>label:</code></td>
+                <td>any label (to set multiple labels use the format <code>[label1, label2, etc]</code>)</td>
+                <td>Apply a specific label to matching emails</td>
+              </tr>
+              <tr>
+                <td><code>skipInbox:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Archive matching emails instead of keeping in inbox</td>
+              </tr>
+              <tr>
+                <td><code>markAsRead:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Automatically mark matching emails as read</td>
+              </tr>
+              <tr>
+                <td><code>star:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Star matching emails</td>
+              </tr>
+              <tr>
+                <td><code>markImportant:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Always mark matching emails as important</td>
+              </tr>
+              <tr>
+                <td><code>neverMarkImportant:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Prevent matching emails from being marked important</td>
+              </tr>
+              <tr>
+                <td><code>neverSpam:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Prevent matching emails from going to spam</td>
+              </tr>
+              <tr>
+                <td><code>forwardTo:</code></td>
+                <td><code>email@example.com</code></td>
+                <td>Forward matching emails to the provided email address</td>
+              </tr>
+              <tr>
+                <td><code>delete:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Automatically delete matching emails</td>
+              </tr>
+              <tr>
+                <td><code>category:</code></td>
+                <td><code>Promotions, Social, Updates, Forums, Primary</code></td>
+                <td>Categorize matching emails</td>
+              </tr>
+              <tr>
+                <td><code>backfill:</code></td>
+                <td><code>true</code> or <code>false</code></td>
+                <td>Apply filter to all matching conversations (App only! Not a filter setting)</td>
+              </tr>
+            </table>
           </div>
         </div>
       </div>
-    
-      <div style="flex: 1;">
-        <div class="scroll-panel">
-          <table>
-            <tr>
-              <th>Key</th>
-              <th>Value</th>
-              <th>Description</th>
-            </tr>
-            <tr>
-              <td><code>from:</code></td>
-              <td><code>email@example.com</code></td>
-              <td>Filter by sender email address</td>
-            </tr>
-            <tr>
-              <td><code>to:</code></td>
-              <td><code>email@example.com</code></td>
-              <td>Filter by recipient email address</td>
-            </tr>
-            <tr>
-              <td><code>subject:</code></td>
-              <td>any text</td>
-              <td>Filter by email subject line</td>
-            </tr>
-            <tr>
-              <td><code>query:</code></td>
-              <td>any text or phrase</td>
-              <td>Filter by email content containing specific words/phrases</td>
-            </tr>
-            <tr>
-              <td><code>negatedQuery:</code></td>
-              <td>any text or phrase</td>
-              <td>Filter by email content NOT containing specific words/phrases</td>
-            </tr>
-            <tr>
-              <td><code>hasAttachment:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>true to filter only emails with attachments</td>
-            </tr>
-            <tr>
-              <td><code>excludeChats:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>true to exclude chat messages from filter</td>
-            </tr>
-            <tr>
-              <td><code>size:</code></td>
-              <td>any number of bytes (e.g. <code>1000000</code>)</td>
-              <td>Used with <code>sizeComparison:</code> to filter by attachment size</td>
-            </tr>
-            <tr>
-              <td><code>sizeComparison:</code></td>
-              <td><code>larger</code> or <code>smaller</code></td>
-              <td>Used with <code>size:</code> to filter by attachment size</td>
-            </tr>
-            <tr>
-              <td><code>label:</code></td>
-              <td>any label (to set multiple labels use the format <code>[label1, label2, etc]</code>)</td>
-              <td>Apply a specific label to matching emails</td>
-            </tr>
-            <tr>
-              <td><code>skipInbox:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Archive matching emails instead of keeping in inbox</td>
-            </tr>
-            <tr>
-              <td><code>markAsRead:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Automatically mark matching emails as read</td>
-            </tr>
-            <tr>
-              <td><code>star:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Star matching emails</td>
-            </tr>
-            <tr>
-              <td><code>markImportant:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Always mark matching emails as important</td>
-            </tr>
-            <tr>
-              <td><code>neverMarkImportant:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Prevent matching emails from being marked important</td>
-            </tr>
-            <tr>
-              <td><code>neverSpam:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Prevent matching emails from going to spam</td>
-            </tr>
-            <tr>
-              <td><code>forwardTo:</code></td>
-              <td><code>email@example.com</code></td>
-              <td>Forward matching emails to the provided email address</td>
-            </tr>
-            <tr>
-              <td><code>delete:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Automatically delete matching emails</td>
-            </tr>
-            <tr>
-              <td><code>category:</code></td>
-              <td><code>Promotions, Social, Updates, Forums, Primary</code></td>
-              <td>Categorize matching emails</td>
-            </tr>
-            <tr>
-              <td><code>backfill:</code></td>
-              <td><code>true</code> or <code>false</code></td>
-              <td>Apply filter to all matching conversations (App only! Not a filter setting)</td>
-            </tr>
-          </table>
+    </div>
+
+    <!-- ── View Filters panel ── -->
+    <div class="panel" id="panel-view" style="max-width: 780px; margin: 0 auto;">
+      <div class="card">
+        <div class="card-title">All Filters</div>
+        <p class="card-hint">All filter entries currently stored in the sheet.</p>
+      </div>
+      <div class="table-wrap" id="tableWrap">
+        <div class="loading-state">
+          <div class="spinner visible"></div> Loading filters…
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── View Filters panel ── -->
-  <div class="panel" id="panel-view" style="max-width: 780px; margin: 0 auto;">
-    <div class="card">
-      <div class="card-title">All Filters</div>
-      <p class="card-hint">All filter entries currently stored in the sheet.</p>
-    </div>
-    <div class="table-wrap" id="tableWrap">
-      <div class="loading-state">
-        <div class="spinner visible"></div> Loading filters…
-      </div>
-    </div>
-  </div>
-
-</main>
-
-<script>
-  // ── Tab switching ──────────────────────────────────────────────────────────
-  function switchTab(name) {
-    document.querySelectorAll('.tab').forEach((t, i) => {
-      t.classList.toggle('active', ['add','view'][i] === name);
-    });
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById('panel-' + name).classList.add('active');
-    if (name === 'view') loadFilters();
-  }
-
-  // ── Add Filters ───────────────────────────────────────────────────────────
-  function handleRun() {
-    const input = document.getElementById('input').value.trim();
-    const validationMsg = document.getElementById('validationMsg');
-
-    if (!input) { validationMsg.textContent = 'Please enter at least one entry.'; return; }
-    validationMsg.textContent = '';
-
-    const lines = input.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('//'));
-    for (const line of lines) {
-      if (/^DEL\s+/i.test(line)) continue;
-      const isKV = line.split(',').some(t => /^\s*\w+:/.test(t));
-      if (isKV) {
-        if (!/from\s*:|to\s*:/.test(line))
-          { validationMsg.textContent = `Missing from: or to: in "${line}"`; return; }
-        if (!/label\s*:/.test(line))
-          { validationMsg.textContent = `Missing label: in "${line}"`; return; }
-      } else {
-        const parts = line.split(',').map(p => p.trim());
-        if (!parts[0].includes('@'))
-          { validationMsg.textContent = `Invalid email: "${parts[0]}"`; return; }
-        if (!parts[1])
-          { validationMsg.textContent = `Missing label for: "${parts[0]}"`; return; }
-      }
-    }
-
-    setLoading(true);
-    clearLog();
-    google.script.run
-      .withSuccessHandler(onSuccess)
-      .withFailureHandler(onFailure)
-      .addFiltersFromUI(input);
-  }
-
-  function onSuccess(results) {
-    setLoading(false);
-    showLog(results);
-  }
-
-  function onFailure(err) {
-    setLoading(false);
-    document.getElementById('validationMsg').textContent = 'Error: ' + err.message;
-  }
-
-  function setLoading(on) {
-    document.getElementById('runBtn').disabled = on;
-    document.getElementById('spinner').classList.toggle('visible', on);
-  }
-
-  function clearInput() {
-    document.getElementById('input').value = '';
-    document.getElementById('validationMsg').textContent = '';
-    clearLog();
-  }
-
-  function clearLog() {
-    document.getElementById('logRows').innerHTML = '';
-    document.getElementById('log').classList.remove('visible');
-  }
-
-  function showLog(results) {
-    const header  = document.getElementById('logHeader');
-    const logRows = document.getElementById('logRows');
-
-    const created = results.filter(r => r.status === 'created').length;
-    const skipped = results.filter(r => r.status === 'skipped').length;
-    const errors  = results.filter(r => r.status === 'error').length;
-    header.textContent = `Results — ${created} created · ${skipped} skipped · ${errors} error${errors !== 1 ? 's' : ''}`;
-
-    logRows.innerHTML = '';
-    for (const r of results) {
-      const badgeClass = r.status === 'created' ? 'badge-created'
-                       : r.status === 'deleted' ? 'badge-created'
-                       : r.status === 'skipped' ? 'badge-skipped' : 'badge-error';
-      const row = document.createElement('div');
-      row.className = 'log-row';
-      row.innerHTML = `
-        <span class="badge ${badgeClass}">${r.status}</span>
-        <span class="log-email">${esc(r.criteriaStr)}</span>
-        <span class="log-detail">${esc(r.actionsStr ? '→ ' + r.actionsStr : '')} ${esc(r.message || '')}</span>
-      `;
-      logRows.appendChild(row);
-    }
-    document.getElementById('log').classList.add('visible');
-  }
-
-  // ── View Filters ──────────────────────────────────────────────────────────
-  let filtersLoaded = false;
-
-  function loadFilters() {
-    if (filtersLoaded) return;
-    google.script.run
-      .withSuccessHandler(renderTable)
-      .withFailureHandler(err => {
-        document.getElementById('tableWrap').innerHTML =
-          `<div class="empty-state">Failed to load filters: ${esc(err.message)}</div>`;
-      })
-      .getFiltersForUI();
-  }
-
-  function renderTable(rows) {
-    filtersLoaded = true;
-    const wrap = document.getElementById('tableWrap');
-
-    if (!rows || rows.length === 0) {
-      wrap.innerHTML = '<div class="empty-state">No filters yet. Add some using the Add Filters tab.</div>';
-      return;
-    }
-
-    const tableRows = rows.map(r => `
-      <tr>
-        <td class="email">${esc(r.criteria)}</td>
-        <td>${esc(r.actions)}</td>
-        <td>${esc(r.lastSynced || '—')}</td>
-      </tr>
-    `).join('');
-
-    wrap.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Criteria</th>
-            <th>Actions</th>
-            <th>Last Synced</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    `;
-  }
-
-  // ── Utilities ─────────────────────────────────────────────────────────────
-  function esc(str) {
-    return String(str || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-</script>
+  </main>
+  <?!= include('Script'); ?>
 </body>
 </html>
