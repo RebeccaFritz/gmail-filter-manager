@@ -10,7 +10,7 @@ A Google Apps Script web app for creating and managing Gmail filters in bulk. Fi
 - **Two input formats** — a quick positional shorthand for common cases, and a full key:value format for everything else
 - **Full Gmail filter criteria** — `from`, `to`, `subject`, `query`, `negatedQuery`, `hasAttachment`, `excludeChats`, `size`, `sizeComparison`
 - **Full Gmail filter actions** — `label`, `skipInbox`, `markImportant`, `markAsRead`, `star`, `neverMarkImportant`, `neverSpam`, `forwardTo`, `category`
-- **Multiple labels per filter** — assign more than one label using bracket syntax: `label:[Work, Receipts]`
+- **Multiple labels per filter** — assign more than one label using bracket syntax: `label:[Work, Receipts]` 
 - **Auto-creates labels** — including nested labels like `Finance/Alerts`
 - **Skips duplicates** — if an identical filter already exists in Gmail, it won't create another
 - **Replaces outdated filters** — if a filter exists for the same sender but with different settings, deletes the old one and creates the updated one
@@ -18,33 +18,62 @@ A Google Apps Script web app for creating and managing Gmail filters in bulk. Fi
 - **Sheet-based storage** — add rows directly to the sheet to define filters without using the UI
 - **PropertiesService cache** — label IDs and filter criteria are cached locally so repeat syncs skip Gmail API calls for entries that haven't changed
 
+> BUG — July, 2026: Multiple label addition is not working properly
+
 ---
 
 ## Setup
 
-### 1. Create a new Apps Script project
-Go to [script.google.com](https://script.google.com) and create a new standalone project.
+### Prerequisites
 
-### 2. Enable the Gmail Advanced Service
+- [Node.js](https://nodejs.org/) (required to install [clasp](https://developers.google.com/apps-script/guides/clasp))
+- A Google account with Gmail
+
+### 1. Clone the repository
+
+``` bash
+git clone https://github.com/RebeccaFritz/gmail-filter-manager.git
+cd gmail-filter-manager
+```
+
+### 2. Install clasp
+
+``` bash
+npm install -g @google/clasp
+clasp login
+```
+
+This opens a browser window to authorize clasp with your Google account
+
+### 3. Create a new Apps Script project
+Go to [script.google.com](https://script.google.com) and create a new standalone project. Copy the script ID from Project Settings (the gear icon in the left sidebar).
+
+### 4. Configure clasp
+
+Create a .clasp.json file in the project root:
+
+``` json
+{
+  "scriptId": "your-script-id-here",
+  "rootDir": "."
+}
+```
+
+### 5. Enable the Gmail Advanced Service
 
 - In the left sidebar, click **Services** (`+`)
 - Find **Gmail API** and click **Add**
 
-### 3. Create the files
-Delete the default `Code.gs` and create the following files, pasting in the contents of each:
+### 6. Push the code
 
-| File | Purpose |
-|---|---|
-| `Main.gs` | Entry points: `doGet()` and `syncFilters()` |
-| `Helpers.gs` | Parsing utilities, Gmail label/filter logic, PropertiesService cache |
-| `Spreadsheet.gs` | All Google Sheet read/write operations |
-| `Index.html` | The web app UI |
-| `Test.gs` | Unit tests for parsing functions |
+``` bash
+clasp push
+```
 
-### 4. Initialize the sheet
-Run `getOrCreateSheet()` once from the editor. This creates the "Gmail Filter Manager" spreadsheet in your Drive and sets up the Filters sheet with proper formatting.
+### 7. Initialize the sheet
+In the Apps Script editor, select getOrCreateSheet from the function dropdown and click Run. This creates the "Gmail Filter Manager" spreadsheet in your Drive.
 
-### 5. Deploy as a web app
+### 8. Deploy as a web app
 - Go to **Deploy → New deployment**
 - Click the gear icon next to "Select type" and choose **Web app**
 - Set **Execute as** to `Me`
@@ -53,7 +82,7 @@ Run `getOrCreateSheet()` once from the editor. This creates the "Gmail Filter Ma
 
 Bookmark that URL — it's your permanent entry point. 
 
-### 6. Authorize the script
+### 9. Authorize the script
 On first run you'll be prompted to authorize the script to access Gmail and Drive. Follow the prompts.
 
 ---
@@ -191,17 +220,21 @@ Run manually from the Apps Script editor. Reads all rows from the sheet and appl
 
 ## File structure
 
-### `Main.gs`
-Entry points and core filter logic:
+### `App.gs`
+Web app endpoints and UI-facing functions
 - `doGet()` — serves `Index.html` as the web app
-- `syncFilters()` — syncs all sheet rows to Gmail
+- `include()` — used to inject CSS and frontend JavaScript into `Index.html`
 - `addFiltersFromUI(rawInput)` — called by the web UI; parses input, creates filters, optionally backfills existing threads
 - `getFiltersForUI()` — called by the web UI to populate the View Filters table
-- `applyFilter(criteriaStr, actionsStr, backfill)` — creates Gmail labels and a filter from criteria/actions strings; shared by both `addFiltersFromUI` and `syncFilters`
-- `deleteFilter(parsed)` — deletes a Gmail filter matching the specified criteria and label/action combination; uses `isDesiredFilter` for exact matching
+- `syncFilters()` — syncs all sheet rows to Gmail
 
-### `Helpers.gs`
-Parsing utilities, Gmail API logic, and the PropertiesService cache:
+### `Cache.gs` 
+`PropertiesService` caching 
+- `cacheFilter / getCachedFilter / evictFilterCache` — PropertiesService helpers for filter criteria
+- `cacheLabelId / getCachedLabelId` — PropertiesService helpers for label IDs
+
+### `FilterParser.gs` 
+Parsing and interpreting user input 
 - `parseLine(str)` — detects format and routes to the appropriate parser
 - `parseKVString(str)` — parses a key:value string into an object
 - `parsePositionalString(str)` — parses a positional CSV line into a KV object
@@ -210,27 +243,37 @@ Parsing utilities, Gmail API logic, and the PropertiesService cache:
 - `parsePrimitive(val)` — coerces strings to booleans or numbers
 - `buildCriteria(parsed)` — builds a Gmail API criteria object from a parsed KV object
 - `buildAction(parsed, labelIds)` — builds a Gmail API action object from a parsed KV object and resolved label IDs
-- `getOrCreateLabel(labelName)` — returns a label's ID, creating it if needed; cache-first
+
+### `FilterService.gs` 
+Contains the application's core workflow 
+- `applyFilter(criteriaStr, actionsStr, backfill)` — creates Gmail labels and a filter from criteria/actions strings; shared by both `addFiltersFromUI` and `syncFilters`
+- `deleteFilter(parsed)` — deletes a Gmail filter matching the specified criteria and label/action combination; uses `isDesiredFilter` for exact matching
+
+### `GmailApi.gs` 
+Gmail-specific operations 
+- `getOrCreateLabel(labelName)` — Returns the ID of a Gmail label by name, creating it if it doesn't exists
 - `processExistingFilters(from, labelIds, parsedActions)` — checks for existing Gmail filters; keeps exact matches, deletes outdated ones
 - `isDesiredFilter(match, labelIds, parsedActions)` — compares a filter object against desired criteria
-- `cacheFilter / getCachedFilter / evictFilterCache` — PropertiesService helpers for filter criteria
-- `cacheLabelId / getCachedLabelId` — PropertiesService helpers for label IDs
 
-### `Spreadsheet.gs`
-All sheet access — no Gmail logic lives here:
-- `getOrCreateSpreadsheet()` — finds or creates the "Gmail Filter Manager" spreadsheet; caches its ID
-- `getOrCreateSheet()` — finds or creates the Filters sheet with header and formatting
-- `readFiltersFromSheet()` — returns all data rows as an array of objects
-- `writeFilterToSheet(criteriaStr, actionsStr)` — appends a new row; skips duplicates
-- `markSyncedInSheet(criteriaStr)` — updates the Last Synced timestamp for a given row
-- `filterExistsInSheet(criteriaStr)` — returns true if a row with that criteria string already exists
-
-### `Index.html`
+### `Index.html`, `Script.html`, and `Stylesheet.html` 
 The web app UI. Two tabs:
 - **Add Filters** — textarea input with client-side validation, loading state, and a color-coded results log
 - **View Filters** — table of all entries from the sheet
 
-### `Test.gs`
+### `Spreadsheet.gs` 
+All Google sheet operations — no Gmail logic lives here:
+- `getOrCreateSpreadsheet()` — finds or creates the "Gmail Filter Manager" spreadsheet; caches its ID
+- `getOrCreateSheet()` — finds or creates the Filters sheet with header and formatting
+- `formatSheet(sheet)` — applies formating to a newly made sheet
+- `readFiltersFromSheet()` — returns all data rows as an array of objects
+- `writeFilterToSheet(criteriaStr, actionsStr, backfill)` — appends a new row; skips duplicates
+- `markSyncedInSheet(criteriaStr)` — updates the Last Synced timestamp for a given row
+- `filterExistsInSheet(criteriaStr)` — returns true if a row with that criteria string already exists
+
+### `Constants.gs` 
+Shared constants and configuration 
+
+### `Test.gs` 
 Unit tests for the parsing layer. Contains `assert`, `assertEqual`, and `assertThrows` helpers, individual test functions, and a `runAllTests()` runner. Run from the Apps Script editor — no deployment needed.
 
 ---

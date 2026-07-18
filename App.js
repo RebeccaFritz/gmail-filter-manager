@@ -11,7 +11,7 @@ function doGet() {
 }
 
 /**
- * include directly injects html file snippets into a file when called with printing scriptlets
+ * include directly injects html file snippets into another html file when called with printing scriptlets
  * @param {string} filename
  */
 function include(filename) {
