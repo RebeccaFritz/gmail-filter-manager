@@ -106,27 +106,23 @@ function syncFilters() {
 
   if (numErrors === 0) {
     return {
-      status: `success`,
-      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail} \n
-                  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}`
+      status: 'success',
+      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail} \n  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}`
     }
   } else if ( numErrors > 0 && numCreatedSkipped > 0) {
     return {
-      status: `partial`,
-      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail}, errors ${numErrorsToGmail} \n
-                  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}, errors ${numErrorsToSheet}`
+      status: 'partial',
+      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail}, errors ${numErrorsToGmail} \n  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}, errors ${numErrorsToSheet}`
     }
   } else if (numErrors > 0 && numCreatedSkipped === 0) {
     return {
-      status: `failure`,
-      message: `  sheet→Gmail: errors ${numErrorsToGmail} \n
-                  Gmail→sheet: errors ${numErrorsToSheet}`
+      status: 'failure',
+      message: `  sheet→Gmail: errors ${numErrorsToGmail} \n  Gmail→sheet: errors ${numErrorsToSheet}`
     }
   } else {
     return {
-      status: `failure`,
-      message: `  sheet→Gmail: failed to determine \n
-                  Gmail→sheet: failed to determine`
+      status: 'failure',
+      message: `  sheet→Gmail: failed to determine \n  Gmail→sheet: failed to determine`
     }
   }
 }

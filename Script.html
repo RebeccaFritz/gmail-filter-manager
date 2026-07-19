@@ -101,20 +101,36 @@
     let iconElement = document.getElementById('icon-container');
     let textElement = document.getElementById('sync-text');
     syncElement.classList.remove('error');
+    syncElement.classList.remove('partial');
     syncElement.classList.remove('success');
 
     google.script.run
       .withSuccessHandler(res => {
         syncElement.classList.add('visible');
-        syncElement.classList.add('success');
-        iconElement.innerHTML = syncIcon;
-        textElement.innerHTML = "Synced with Gmail filters";
+        switch (res.status) {
+          case 'success':
+            syncElement.classList.add('success');
+            iconElement.innerHTML = syncIcon;
+            textElement.innerHTML = "Synced with Gmail";
+            break;
+          case 'partial':
+            syncElement.classList.add('partial');
+            iconElement.innerHTML = syncErrorIcon;
+            textElement.innerHTML = "Synced with errors";
+            break;
+          case 'failure':
+            syncElement.classList.add('error');
+            iconElement.innerHTML = syncErrorIcon;
+            textElement.innerHTML = "Sync failed";
+            break;
+        }
+        console.log(res.message);
       })
       .withFailureHandler(err => {
         syncElement.classList.add('visible');
         syncElement.classList.add('error');
         iconElement.innerHTML = syncErrorIcon;
-        textElement.innerHTML = "Failed to sync with Gmail filters";
+        textElement.innerHTML = "Sync failed";
       })
       .syncFilters();
   }
