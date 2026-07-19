@@ -103,3 +103,65 @@ function isDesiredFilter(match, labelIds, parsedActions) {
 
   return allLabelsPresent && importantCorrect && inboxCorrect;
 }
+
+/**
+ * Gets every filter object from Gmail and ensures each one has a matching row in the sheet.
+ * @param {Spreadsheet_Row[]}
+ * @return {{ created: number, skipped: number, errors: number }}
+ */
+function syncGmailToSheet(rows) {
+  const labelResponse = Gmail.Users.Labels.list(userId);
+  const idToNameMap = {};
+  for (const label of (labelResponse.labels || [])) {
+    idToNameMap[label.id] = label.name;
+  }
+
+  const parsedSheetRows = rows.map(row => ({
+    criteria: sortObject(parseKVString(row.criteria)),
+    actions:  sortObject(parseKVString(row.actions))
+  }));
+
+  // Query Gmail
+  const response        = Gmail.Users.Settings.Filters.list(userId);
+  const gmailFilters = (response && response.filter) ? response.filter : [];
+
+  // Convert the Gmail filters into an object and sort them to prepare for comparison
+  const parsedGmailFilters = gmailFilters.map(filter => ({
+    criteria: sortObject(filter.criteria),
+    action: sortObject(parseActionFromGmail(filter.action, idToNameMap))
+  }))
+
+  // compare Gmail filters to filters in sheet
+  const syncStatus = {
+    created: 0,
+    skipped: 0,
+    errors: 0,
+  };
+  for (const {criteria: gmailCriteria, action: gmailAction} of parsedGmailFilters) {
+    const alreadyInSheet = parsedSheetRows.some(row =>
+      JSON.stringify(row.criteria) === JSON.stringify(gmailCriteria) &&
+      JSON.stringify(row.actions)  === JSON.stringify(gmailAction)
+    );
+    if (!alreadyInSheet) {
+      const criteriaStr = buildKVString(gmailCriteria);
+      const actionStr = buildKVString(gmailAction);
+      try {
+        const { status, message } = writeFilterToSheet(criteriaStr, actionStr, false);
+        let icon;
+        if (status === 'created') {
+          icon = '✅';
+          syncStatus.created += 1;
+        } else {
+          icon = '⏭️';
+          syncStatus.skipped += 1;
+        }
+        console.log(`${icon} ${criteriaStr} ${actionStr} — ${message}`);
+      } catch (e) {
+        console.error(`❌ ${criteriaStr} ${actionStr}: ${e.message}`);
+        syncStatus.errors += 1;
+      }
+    }
+  }
+
+  return syncStatus;
+}

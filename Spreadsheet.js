@@ -85,7 +85,7 @@ function formatSheet(sheet) {
 /**
  * Reads all filter rows from the sheet and returns them as an array of objects.
  *
- * @returns {{ criteria: string, actions: string, backfill: boolean, lastSynced: string }[]}
+ * @returns {Spreadsheet_Row[]}
  */
 function readFiltersFromSheet() {
   const sheet   = getOrCreateSheet();
@@ -111,12 +111,14 @@ function readFiltersFromSheet() {
  * @param {string}  criteriaStr
  * @param {string}  actionsStr
  * @param {boolean} backfill
- * @returns {boolean} True if a new row was written, false if it already existed.
+ * @returns {{ status: 'created'|'skipped'|'error', message: string }} 
  */
 function writeFilterToSheet(criteriaStr, actionsStr, backfill) {
   if (filterExistsInSheet(criteriaStr)) {
-    console.log(`  Sheet: "${criteriaStr}" already exists — skipping`);
-    return false;
+    return {
+      status: 'skipped',
+      message: `  Sheet: "${criteriaStr}" already exists — skipping`
+    }
   }
 
   const sheet    = getOrCreateSheet();
@@ -127,8 +129,10 @@ function writeFilterToSheet(criteriaStr, actionsStr, backfill) {
   sheet.getRange(newRow, COL_ACTIONS).setValue(actionsStr);
   sheet.getRange(newRow, COL_LAST_SYNCED).setValue(new Date().toLocaleString());
 
-  console.log(`  Sheet: appended "${criteriaStr}" → "${actionsStr}"`);
-  return true;
+  return {
+      status: 'created',
+      message: `  Sheet: appended "${criteriaStr}" & "${actionsStr}"`
+    }
 }
 
 /**
@@ -157,6 +161,7 @@ function markSyncedInSheet(criteriaStr) {
  * @returns {boolean}
  */
 function filterExistsInSheet(criteriaStr) {
+  console.warn('Bug alert — July 2026 | filterExistsInSheet only checks for a filter with a matching criteria string')
   const sheet   = getOrCreateSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < DATA_START_ROW) return false;
@@ -168,4 +173,45 @@ function filterExistsInSheet(criteriaStr) {
     .map(c => String(c).trim().toLowerCase());
 
   return criteria.includes(criteriaStr.toLowerCase());
+}
+
+// ─── Other ────────────────────────────────────────────────────────────────────
+
+/**
+ * Reads every row from the sheet and ensures a matching Gmail label and filter
+ * exists for each one. Safe to run repeatedly.
+ * @param {Spreadsheet_Row[]}
+ * @return {{ created: number, skipped: number, errors: number }}
+ */
+function syncSheetToGmail(rows) {
+  const syncStatus = {
+    created: 0,
+    skipped: 0,
+    errors: 0,
+  };
+
+  if (rows.length === 0) {
+    console.log('No filter rows found in sheet. Add entries via the web app and run again.');
+    return syncStatus;
+  }
+
+  for (const { criteria, actions } of rows) {
+    try {
+      const { status, message } = applyFilter(criteria, actions);
+      let icon;
+      if (status === 'created') {
+        icon = '✅';
+        syncStatus.created += 1;
+      } else {
+        icon = '⏭️';
+        syncStatus.skipped += 1;
+      }
+      console.log(`${icon} ${criteria} ${actions} — ${message}`);
+      markSyncedInSheet(criteria);
+    } catch (e) {
+      console.error(`❌ ${criteria} ${actions} : ${e.message}`);
+      syncStatus.errors += 1;
+    }
+  }
+  return syncStatus;
 }

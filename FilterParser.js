@@ -5,7 +5,7 @@
  * KV format: any token matches /^\w+:/
  *
  * @param {string} str
- * @returns {Object}
+ * @returns {Key_Map}
  */
 function parseLine(str) {
   const isDel = /^DEL\s+/i.test(str);
@@ -22,7 +22,7 @@ function parseLine(str) {
  * Label values are always normalized to an array.
  *
  * @param {string} str - e.g. "from:boss@work.com, label:[Work, Memes], skipInbox:true"
- * @returns {Object}
+ * @returns {Key_Map}
  */
 function parseKVString(str) {
   const tokens = splitOutsideBrackets(str);
@@ -60,11 +60,33 @@ function parseKVString(str) {
 }
 
 /**
+ * Turn a 
+ * @param {Filter_Criteria | Action_Keys} parsed 
+ * @return {string} - e.g. "from:boss@work.com, label:[Work, Memes], skipInbox:true"
+ */
+function buildKVString(parsed) {
+  let parts = [];
+
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key === 'label') {
+      console.warn('Bug alert — July 2026 | According to the Google API documentation, only one user-defined label is allowed per filter. The multiple labels per filter feature needs to be removed or reworked. It does not function in its current form. See issue #23.')
+
+      parts.push(key + ':[' + value.join(', ') + ']');
+
+    } else {
+      parts.push(key + ':' + value);
+    }
+  }
+
+  return parts.join(', ')
+}
+
+/**
  * Parses a positional CSV line into a KV object.
  * parts[0]=from, parts[1]=label, parts[2]=skipInbox, parts[3]=markImportant
  *
  * @param {string} str - e.g. "boss@work.com, [Work, Memes], true, false"
- * @returns {Object}
+ * @returns {Key_Map}
  */
 function parsePositionalString(str) {
   const parts = splitOutsideBrackets(str); 
@@ -137,8 +159,8 @@ function parsePrimitive(val) {
 /**
  * Builds a Gmail API criteria object from a parsed KV object.
  *
- * @param {Object} parsed
- * @returns {Object}
+ * @param {Key_Map} parsed
+ * @returns {Filter_Criteria}
  */
 function buildCriteria(parsed) {
   const criteria = {};
@@ -149,11 +171,11 @@ function buildCriteria(parsed) {
 }
 
 /**
- * Builds a Gmail API action object from a parsed KV object and resolved label IDs.
+ * Builds a Gmail API action object from a parsed KV action object and resolved label IDs.
  *
- * @param {Object}   parsed
+ * @param {Key_Map}   parsed
  * @param {string[]} labelIds - resolved Gmail label IDs for all labels in parsed.label
- * @returns {Object}
+ * @returns {Filter_Action} 
  */
 function buildAction(parsed, labelIds) {
   const addLabelIds    = [...labelIds];
@@ -161,7 +183,7 @@ function buildAction(parsed, labelIds) {
 
   if (parsed.skipInbox)          removeLabelIds.push('INBOX');
   if (parsed.markImportant)      addLabelIds.push('IMPORTANT');
-  if (parsed.neverMarkImportant) addLabelIds.push('NEVER_IMPORTANT');
+  if (parsed.neverMarkImportant) removeLabelIds.push('NEVER_IMPORTANT');
   if (parsed.star)               addLabelIds.push('STARRED');
   if (parsed.markAsRead)         addLabelIds.push('UNREAD'); // removeLabelIds
   if (parsed.neverSpam)          addLabelIds.push('SPAM');   // removeLabelIds
@@ -173,7 +195,62 @@ function buildAction(parsed, labelIds) {
   const action = {};
   if (addLabelIds.length)    action.addLabelIds    = addLabelIds;
   if (removeLabelIds.length) action.removeLabelIds = removeLabelIds;
-  if (parsed.forwardTo)      action.forward        = parsed.forwardTo;
+  if (parsed.forward)      action.forward        = parsed.forward;
 
   return action;
+}
+
+/**
+ * Builds a KV action object from a Gmail API action object
+ * 
+ * @param {Filter_Action} action
+ * @param {} idToNameMap
+ * @returns {Action_Keys}
+ */
+function parseActionFromGmail(action, idToNameMap) {
+  let parsedAction = {};
+
+  for (const label of (action.addLabelIds || [])) {
+    switch (label) {
+      case `TRASH`:
+        parsedAction.delete = true;
+        break;
+      case `STARRED`:
+        parsedAction.star = true;
+        break;
+      case `IMPORTANT`:
+        parsedAction.markImportant = true;
+        break;
+      case `CATEGORY_PERSONAL`:
+      case `CATEGORY_UPDATES`:
+      case `CATEGORY_SOCIAL`:
+      case `CATEGORY_FORUMS`:
+        console.warn('parseActionFromGmail is not implemented for the ' + label + ' system label');
+        break;
+      default:
+        parsedAction.label = [];
+        parsedAction.label.push(idToNameMap[label]);
+    }
+  }
+
+  for (const label of (action.removeLabelIds || [])) {
+    switch (label) {
+    case `INBOX`: 
+      parsedAction.skipInbox = true;
+      break;
+    case `SPAM`: 
+      parsedAction.neverSpam = true;
+      break;
+    case `IMPORTANT`: 
+      parsedAction.neverMarkImportant = true;
+      break;
+    case `UNREAD`: 
+      parsedAction.markAsRead = true;
+      break;
+    }
+  }
+
+  if (`forward` in action) parsedAction.forward = action.forward;
+  
+  return parsedAction
 }

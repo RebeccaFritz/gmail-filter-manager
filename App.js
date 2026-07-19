@@ -83,7 +83,7 @@ function addFiltersFromUI(rawInput) {
 
 /**
  * Returns all filter rows from the sheet for display in the UI.
- * @returns {{ criteria: string, actions: string, backfill: boolean, lastSynced: string }[]}
+ * @returns {Spreadsheet_Row[]}
  */
 function getFiltersForUI() {
   return readFiltersFromSheet();
@@ -92,25 +92,41 @@ function getFiltersForUI() {
 // ─── Sync (sheet → Gmail) ─────────────────────────────────────────────────────
 
 /**
- * Reads every row from the sheet and ensures a matching Gmail label and filter
- * exists for each one. Safe to run repeatedly.
+ * Bidirectionally sync the filters between the Google sheet and the Gmail account
+ * @returns {{status: 'success'|'partial'|'failure', message: string}}
  */
 function syncFilters() {
   const rows = readFiltersFromSheet();
 
-  if (rows.length === 0) {
-    console.log('No filter rows found in sheet. Add entries via the web app and run again.');
-    return;
-  }
+  const {created: numCreatedToGmail, skipped: numSkippedToGmail, errors: numErrorsToGmail} = syncSheetToGmail(rows);
+  const {created: numCreatedToSheet, skipped: numSkippedToSheet, errors: numErrorsToSheet} = syncGmailToSheet(rows);
 
-  for (const { criteria, actions } of rows) {
-    try {
-      const { status, message } = applyFilter(criteria, actions);
-      const icon = status === 'created' ? '✅' : '⏭️';
-      console.log(`${icon} ${criteria} — ${message}`);
-      markSyncedInSheet(criteria);
-    } catch (e) {
-      console.error(`❌ ${criteria}: ${e.message}`);
+  const numErrors = numErrorsToGmail + numErrorsToSheet
+  const numCreatedSkipped = numCreatedToGmail + numCreatedToSheet + numSkippedToGmail + numSkippedToSheet
+
+  if (numErrors === 0) {
+    return {
+      status: `success`,
+      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail} \n
+                  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}`
+    }
+  } else if ( numErrors > 0 && numCreatedSkipped > 0) {
+    return {
+      status: `partial`,
+      message: `  sheet→Gmail: created ${numCreatedToGmail}, skipped ${numSkippedToGmail}, errors ${numErrorsToGmail} \n
+                  Gmail→sheet: created ${numCreatedToSheet}, skipped ${numSkippedToSheet}, errors ${numErrorsToSheet}`
+    }
+  } else if (numErrors > 0 && numCreatedSkipped === 0) {
+    return {
+      status: `failure`,
+      message: `  sheet→Gmail: errors ${numErrorsToGmail} \n
+                  Gmail→sheet: errors ${numErrorsToSheet}`
+    }
+  } else {
+    return {
+      status: `failure`,
+      message: `  sheet→Gmail: failed to determine \n
+                  Gmail→sheet: failed to determine`
     }
   }
 }

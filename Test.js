@@ -253,9 +253,9 @@ function test_parseLine_kvAllKeys() {
       label:    'from, markAsRead, star, negatedQuery',
     },
     {
-      input:    'from:boss@work.com, forwardTo:archive@myapp.com, delete:true',
-      expected: { from: 'boss@work.com', forwardTo: 'archive@myapp.com', delete: true },
-      label:    'from, forwardTo, delete',
+      input:    'from:boss@work.com, forward:archive@myapp.com, delete:true',
+      expected: { from: 'boss@work.com', forward: 'archive@myapp.com', delete: true },
+      label:    'from, forward, delete',
     },
   ];
 
