@@ -11,13 +11,13 @@
  */
 function applyFilter(criteriaStr, actionsStr, backfill = false) {
   const parsedCriteria = parseKVString(criteriaStr);
-  const parsedActions  = parseLine(actionsStr); // !!!! problem
+  const parsedActions  = parseKVString(actionsStr);
 
-  const labels   = parsedActions.label || [];
-  const labelIds = labels.map(name => getOrCreateLabel(name));
+  const label = parsedActions.label;
+  const labelId = label === undefined ? undefined : getOrCreateLabel(label);
 
   const criteria = buildCriteria(parsedCriteria);
-  const action   = buildAction(parsedActions, labelIds);
+  const action   = buildAction(parsedActions, labelId);
 
   if (processExistingFilters(parsedCriteria.from, labelIds, parsedActions)) {
     writeFilterToSheet(criteriaStr, actionsStr, backfill);

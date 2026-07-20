@@ -155,28 +155,24 @@ function buildCriteria(parsed) {
  * Builds a Gmail API action object from a parsed KV action object and resolved label IDs.
  *
  * @param {Key_Map}   parsed
- * @param {string[]} labelIds - resolved Gmail label IDs for all labels in parsed.label
+ * @param {string | undefined}    labelId - resolved Gmail label ID for the user label in parsed.label
  * @returns {Filter_Action} 
  */
-function buildAction(parsed, labelIds) {
-  const addLabelIds    = [...labelIds];
+function buildAction(parsed, labelId) {
+  const addLabelIds = labelId !== undefined ? [labelId] : [];
   const removeLabelIds = [];
 
   if (parsed.skipInbox)          removeLabelIds.push('INBOX');
   if (parsed.markImportant)      addLabelIds.push('IMPORTANT');
-  if (parsed.neverMarkImportant) removeLabelIds.push('NEVER_IMPORTANT');
+  if (parsed.neverMarkImportant) removeLabelIds.push('IMPORTANT');
   if (parsed.star)               addLabelIds.push('STARRED');
-  if (parsed.markAsRead)         addLabelIds.push('UNREAD'); // removeLabelIds
-  if (parsed.neverSpam)          addLabelIds.push('SPAM');   // removeLabelIds
-
-  // markAsRead and neverSpam remove labels rather than add them
-  if (parsed.markAsRead) { removeLabelIds.push('UNREAD'); addLabelIds.splice(addLabelIds.indexOf('UNREAD'), 1); }
-  if (parsed.neverSpam)  { removeLabelIds.push('SPAM');  addLabelIds.splice(addLabelIds.indexOf('SPAM'),  1); }
+  if (parsed.markAsRead)         removeLabelIds.push('UNREAD'); 
+  if (parsed.neverSpam)          removeLabelIds.push('SPAM');   
 
   const action = {};
   if (addLabelIds.length)    action.addLabelIds    = addLabelIds;
   if (removeLabelIds.length) action.removeLabelIds = removeLabelIds;
-  if (parsed.forward)      action.forward        = parsed.forward;
+  if (parsed.forward)        action.forward        = parsed.forward;
 
   return action;
 }

@@ -11,6 +11,7 @@ function runAllTests() {
     test_parseLine_ignoreFormatting,
     test_parseLine_delRouting,
     test_buildKVString,
+    test_buildAction,
   ];
 
   let passed = 0, failed = 0;
@@ -301,7 +302,6 @@ function test_parseLine_delRouting() {
 }
 
 // ─── buildKVString ────────────────────────────────────────────────────────────
-/** Verifies that formatting variance and multi word strings are handled correctly. */
 function test_buildKVString() {
   // Arrange
   const cases = [
@@ -347,7 +347,58 @@ function test_buildKVString() {
 }
 
 // ─── buildAction ──────────────────────────────────────────────────────────────
+function test_buildAction() {
+  // Arrange
+  const cases = [
+    {
+      input: [{
+        skipInbox: true,
+        markImportant: true,
+        star: true,
+        markAsRead: true,
+        neverSpam: true,
+        forward: 'boss@work.com'
+      }, 'Label_123'],
+      expected: {
+        addLabelIds: ['Label_123', 'IMPORTANT', 'STARRED'],
+        removeLabelIds: ['INBOX', 'UNREAD', 'SPAM'],
+        forward: 'boss@work.com'
+      },
+      label:    'buildAction test — all cases true (excluding neverMarkImportant)',
+    },
+    {
+      input: [{
+        markImportant: true,
+        star: true,
+      }, 'Label_123'],
+      expected: {
+        addLabelIds: ['Label_123', 'IMPORTANT', 'STARRED']
+      },
+      label:    'buildAction test — add label only',
+    },
+        {
+      input: [{
+        skipInbox: true,
+        neverMarkImportant: true,
+        markAsRead: true,
+        neverSpam: true,
+      }, undefined],
+      expected: {
+        removeLabelIds: ['INBOX', 'IMPORTANT', 'UNREAD', 'SPAM']
+      },
+      label:    'buildAction test — remove label only',
+    },
+  ];
 
-// ─── parseActionFromEmail ─────────────────────────────────────────────────────
+  // Act
+  const results = cases.map(c => ({ ...c, actual: buildAction(c.input[0], c.input[1]) }));
+
+  // Assert
+  for (const r of results) {
+    assertEqual(r.actual, r.expected, r.label);
+  }
+}
+
+// ─── parseActionFromGmail ─────────────────────────────────────────────────────
 
 // ─── syncFilter ───────────────────────────────────────────────────────────────
