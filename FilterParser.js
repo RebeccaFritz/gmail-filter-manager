@@ -18,14 +18,14 @@ function parseLine(str) {
 
 /**
  * Parses a key:value string into an object.
- * Splits on commas outside brackets to preserve label:[Work, Memes].
+ * Splits on commas outside parentheses to preserve query:(from:someuser@example.com is:unread).
  * Label values are always normalized to an array.
  *
- * @param {string} str - e.g. "from:boss@work.com, label:[Work, Memes], skipInbox:true"
+ * @param {string} str - e.g. "from:boss@work.com, label:Work, skipInbox:true"
  * @returns {Key_Map}
  */
 function parseKVString(str) {
-  const tokens = splitOutsideBrackets(str);
+  const tokens = splitOutsideParentheses(str);
   const result = {};
 
   for (const token of tokens) {
@@ -62,17 +62,14 @@ function parseKVString(str) {
 /**
  * Converts an object containing criteria or action keys into a key:value string
  * @param {Filter_Criteria | Action_Keys} parsed 
- * @return {string} - e.g. "from:boss@work.com, label:[Work, Memes], skipInbox:true"
+ * @return {string} - e.g. "from:boss@work.com, label:Work, skipInbox:true"
  */
 function buildKVString(parsed) {
   let parts = [];
 
   for (const [key, value] of Object.entries(parsed)) {
-    if (key === 'label') {
-      console.warn('Bug alert — July 2026 | According to the Google API documentation, only one user-defined label is allowed per filter. The multiple labels per filter feature needs to be removed or reworked. It does not function in its current form. See issue #23.')
-
-      parts.push(key + ':[' + value.join(', ') + ']');
-
+    if (key === 'query' || key === 'negatedQuery') {
+      parts.push(key + ':(' + value + ')');
     } else {
       parts.push(key + ':' + value);
     }
@@ -85,15 +82,15 @@ function buildKVString(parsed) {
  * Parses a positional CSV line into a KV object.
  * parts[0]=from, parts[1]=label, parts[2]=skipInbox, parts[3]=markImportant
  *
- * @param {string} str - e.g. "boss@work.com, [Work, Memes], true, false"
+ * @param {string} str - e.g. "boss@work.com, Work, true, false"
  * @returns {Key_Map}
  */
 function parsePositionalString(str) {
-  const parts = splitOutsideBrackets(str); 
+  const parts = str.split(','); 
   const result = {};
 
   if (parts[0]) result.from            = parts[0];
-  if (parts[1]) result.label           = parseLabels(parts[1]);
+  if (parts[1]) result.label           = parts[1];
   if (parts[2]) {
     const skipInbox = parsePrimitive(parts[2]);
     if (typeof skipInbox !== 'boolean') throw new Error(`"${parts[2]}" is not a valid boolean for skipInbox`);
@@ -109,19 +106,19 @@ function parsePositionalString(str) {
 }
 
 /**
- * Splits a string on commas that are not inside square brackets.
- * e.g. "label:[Work, Memes], skipInbox:true" → ["label:[Work, Memes]", "skipInbox:true"]
+ * Splits a string on commas that are not inside parentheses.
+ * e.g. "query:(from:someuser@example.com is:unread), skipInbox:true" → ["query:(from:someuser@example.com is:unread)", "skipInbox:true"]
  *
  * @param {string} str
  * @returns {string[]}
  */
-function splitOutsideBrackets(str) {
+function splitOutsideParentheses(str) {
   const tokens = [];
   let depth = 0, current = '';
 
   for (const ch of str) {
-    if (ch === '[') { depth++; current += ch; }
-    else if (ch === ']') { depth--; current += ch; }
+    if (ch === '(') { depth++; current += ch; }
+    else if (ch === ')') { depth--; current += ch; }
     else if (ch === ',' && depth === 0) { tokens.push(current.trim()); current = ''; }
     else { current += ch; }
   }

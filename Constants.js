@@ -7,7 +7,7 @@
  * @property {string} [forward] - Email address that the message should be forwarded to. This effectively redirects the message to the address specified in this field, maintaining the original sender in the "From" field.
  * @property {string} [from] - The sender's display name or email address.
  * @property {boolean} [hasAttachment] - Whether the message has any attachment.
- * @property {string[]} [label] - Applies the provided labels to emails matching the filter criteria.
+ * @property {string} [label] - Applies the provided labels to emails matching the filter criteria.
  * @property {boolean} [markAsRead] - Whether to mark all emails matching the filter criteria as read.
  * @property {boolean} [markImportant] - Whether to mark all emails matching the filter criteria as important.
  * @property {string} [negatedQuery] - Only return messages not matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread"
@@ -28,7 +28,7 @@
  * @property {string} [category]
  * @property {boolean} [delete] - Whether to delete all incoming emails matching the filter criteria. 
  * @property {string} [forward] - Email address that the message should be forwarded to. This effectively redirects the message to the address specified in this field, maintaining the original sender in the "From" field.
- * @property {string[]} [label] - Applies the provided labels to emails matching the filter criteria.
+ * @property {string} [label] - Applies the provided labels to emails matching the filter criteria.
  * @property {boolean} [markAsRead] - Whether to mark all emails matching the filter criteria as read.
  * @property {boolean} [markImportant] - Whether to mark all emails matching the filter criteria as important.
  * @property {boolean} [neverMarkImportant] - Ensure emails matching the filter criteria are never marked as important.

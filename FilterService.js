@@ -5,7 +5,7 @@
  * the entry to the sheet. Safe to call repeatedly — skips if an exact match exists.
  *
  * @param {string}  criteriaStr - e.g. "from:boss@work.com, hasAttachment:true"
- * @param {string}  actionsStr  - e.g. "label:[Work, Memes], skipInbox:true"
+ * @param {string}  actionsStr  - e.g. "label:Work, skipInbox:true"
  * @param {boolean} [backfill=false]
  * @returns {{ status: 'created'|'skipped'|'error', message: string }}
  */

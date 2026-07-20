@@ -9,9 +9,9 @@ function runAllTests() {
     test_parsePositionalString_invalidBooleans,
     test_parseLine_positionalRouting,
     test_parseLine_kvRouting,
-    test_parseLine_kvMultiLabel,
     test_parseLine_ignoreFormatting,
     test_parseLine_delRouting,
+    test_buildKVString,
   ];
 
   let passed = 0, failed = 0;
@@ -118,28 +118,23 @@ function test_parsePositionalString_happyPath() {
   const cases = [
     {
       input:    'test1@example.com, Work, true, true',
-      expected: { from: 'test1@example.com', label: ['Work'], skipInbox: true, markImportant: true },
+      expected: { from: 'test1@example.com', label: 'Work', skipInbox: true, markImportant: true },
       label:    'all four fields',
     },
     {
       input:    'test5@example.com, Newsletters',
-      expected: { from: 'test5@example.com', label: ['Newsletters'] },
+      expected: { from: 'test5@example.com', label: 'Newsletters' },
       label:    'optional fields omitted — no skipInbox or markImportant keys',
     },
     {
       input:    'test6@example.com, Newsletters, true',
-      expected: { from: 'test6@example.com', label: ['Newsletters'], skipInbox: true },
+      expected: { from: 'test6@example.com', label: 'Newsletters', skipInbox: true },
       label:    'one optional field',
     },
     {
       input:    'test7@example.com, Finance/Alerts, true, false',
-      expected: { from: 'test7@example.com', label: ['Finance/Alerts'], skipInbox: true, markImportant: false },
+      expected: { from: 'test7@example.com', label: 'Finance/Alerts', skipInbox: true, markImportant: false },
       label:    'nested label',
-    },
-    {
-      input:    'boss@work.com, [Work, Memes], true, false',
-      expected: { from: 'boss@work.com', label: ['Work', 'Memes'], skipInbox: true, markImportant: false },
-      label:    'multi-label bracket syntax',
     },
   ];
 
@@ -185,7 +180,7 @@ function test_parseLine_positionalRouting() {
 
   // Assert
   assertEqual(result.from,          'test1@example.com', 'from');
-  assertEqual(result.label,         ['Work'],            'label normalized to array');
+  assertEqual(result.label,         'Work',              'label ');
   assertEqual(result.skipInbox,     true,                'skipInbox');
   assertEqual(result.markImportant, false,               'markImportant');
 }
@@ -200,22 +195,8 @@ function test_parseLine_kvRouting() {
 
   // Assert
   assertEqual(result.from,      'test1@example.com', 'from');
-  assertEqual(result.label,     ['Work'],            'label normalized to array');
+  assertEqual(result.label,     'Work',            'label');
   assertEqual(result.skipInbox, true,                'skipInbox');
-}
-
-/** Verifies that bracket multi-label syntax is handled correctly in key:value format. */
-function test_parseLine_kvMultiLabel() {
-  // Arrange
-  const input = 'from:boss@work.com, label:[Work, Memes], skipInbox:true';
-
-  // Act
-  const result = parseLine(input);
-
-  // Assert
-  assertEqual(result.from,      'boss@work.com',    'from');
-  assertEqual(result.label,     ['Work', 'Memes'],  'multi-label array');
-  assertEqual(result.skipInbox, true,               'skipInbox');
 }
 
 /** Verifies that all supported criteria and action keys parse correctly in key:value format. */
@@ -223,18 +204,23 @@ function test_parseLine_kvAllKeys() {
   // Arrange
   const cases = [
     {
-      input:    'from:boss@work.com, label:[Work, Memes], skipInbox:true, subject:Finances',
-      expected: { from: 'boss@work.com', label: ['Work', 'Memes'], skipInbox: true, subject: 'Finances' },
+      input:    'from:boss@work.com, label:Work, skipInbox:true, subject:Finances',
+      expected: { from: 'boss@work.com', label: 'Work', skipInbox: true, subject: 'Finances' },
       label:    'from, label (multi), skipInbox, subject',
     },
     {
       input:    'to:boss@work.com, subject:Finances, label:Work, markImportant:true',
-      expected: { to: 'boss@work.com', label: ['Work'], markImportant: true, subject: 'Finances' },
+      expected: { to: 'boss@work.com', label: 'Work', markImportant: true, subject: 'Finances' },
       label:    'to, subject, label (single), markImportant',
     },
     {
-      input:    'from:boss@work.com, query:Finances, hasAttachment:false, excludeChats:true',
-      expected: { from: 'boss@work.com', query: 'Finances', hasAttachment: false, excludeChats: true },
+      input:    'from:boss@work.com, query:(from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread), hasAttachment:false, excludeChats:true',
+      expected: { 
+        from: 'boss@work.com', 
+        query: 'from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread', 
+        hasAttachment: false, 
+        excludeChats: true 
+      },
       label:    'from, query, hasAttachment, excludeChats',
     },
     {
@@ -248,8 +234,13 @@ function test_parseLine_kvAllKeys() {
       label:    'from, neverSpam, category',
     },
     {
-      input:    'from:boss@work.com, markAsRead:true, star:true, negatedQuery:unsubscribe',
-      expected: { from: 'boss@work.com', markAsRead: true, star: true, negatedQuery: 'unsubscribe' },
+      input:    'from:boss@work.com, markAsRead:true, star:true, negatedQuery:(from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread)',
+      expected: { 
+        from: 'boss@work.com', 
+        markAsRead: true, 
+        star: true, 
+        negatedQuery: 'from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread' 
+      },
       label:    'from, markAsRead, star, negatedQuery',
     },
     {
@@ -273,19 +264,14 @@ function test_parseLine_ignoreFormatting() {
   // Arrange
   const cases = [
     {
-      input:    'from:boss@work.com, label:[Work,     Memes]',
-      expected: { from: 'boss@work.com', label: ['Work', 'Memes'] },
-      label:    'label (multi) with extra spaces',
-    },
-    {
-      input:    'from:boss@work.com, label:[Work], skipInbox:true, skipInbox:true',
-      expected: { from: 'boss@work.com', label: ['Work'], skipInbox: true },
+      input:    'from:boss@work.com, label:Work, skipInbox:true, skipInbox:true',
+      expected: { from: 'boss@work.com', label: 'Work', skipInbox: true },
       label:    'skipInbox:true appears twice --> ignore the second appearance',
     },
     {
-      input:    'from:boss@work.com, query:Finances are Great, label:Cool Stuff, subject: Have you seen the muffin man?',
-      expected: { from: 'boss@work.com', query: 'Finances are Great', label: ['Cool Stuff'], subject: 'Have you seen the muffin man?' },
-      label:    'multi word query: label: and subject:',
+      input:    'from:boss@work.com, label:Cool Stuff, subject: Have you seen the muffin man?',
+      expected: { from: 'boss@work.com', label: 'Cool Stuff', subject: 'Have you seen the muffin man?' },
+      label:    'multi word label: and subject:',
     },
   ];
 
@@ -318,12 +304,12 @@ function test_parseLine_delRouting() {
   const cases = [
     {
       input:    'DEL from:boss@work.com, label:Work, skipInbox:true',
-      expected: { from: 'boss@work.com', label: ['Work'], skipInbox: true, _delete: true },
+      expected: { from: 'boss@work.com', label: 'Work', skipInbox: true, _delete: true },
       label:    'DEL prefix stripped, _delete flag set (KV format)',
     },
     {
       input:    'DEL boss@work.com, Work, true, false',
-      expected: { from: 'boss@work.com', label: ['Work'], skipInbox: true, markImportant: false, _delete: true },
+      expected: { from: 'boss@work.com', label: 'Work', skipInbox: true, markImportant: false, _delete: true },
       label:    'DEL prefix stripped, _delete flag set (positional format)',
     },
   ];
@@ -336,3 +322,55 @@ function test_parseLine_delRouting() {
     assertEqual(r.actual, r.expected, r.label);
   }
 }
+
+// ─── buildKVString ────────────────────────────────────────────────────────────
+/** Verifies that formatting variance and multi word strings are handled correctly. */
+function test_buildKVString() {
+  // Arrange
+  const cases = [
+    {
+      input: { 
+        from: 'boss@work.com', 
+        to: 'me@home.com',
+        subject: 'finances',
+        query: 'from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread',
+        negatedQuery: 'from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread',
+        hasAttachment: true,
+        excludeChats: true,
+        size: 4,
+        sizeComparison: 'larger'
+      },
+      expected:    'from:boss@work.com, to:me@home.com, subject:finances, query:(from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread), negatedQuery:(from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread), hasAttachment:true, excludeChats:true, size:4, sizeComparison:larger',
+      label:    'buildKVString for Filter_Criteria object',
+    },
+    {
+      input:    {
+        delete: false,
+        forward: 'boss@work.com',
+        label: 'Work',
+        markAsRead: true,
+        markImportant: true,
+        neverMarkImportant: true,
+        neverSpam: true,
+        skipInbox: true,
+        star: true
+      },
+      expected: 'delete:false, forward:boss@work.com, label:Work, markAsRead:true, markImportant:true, neverMarkImportant:true, neverSpam:true, skipInbox:true, star:true',
+      label:    'buildKVString for Action_Keys object',
+    },
+  ];
+
+  // Act
+  const results = cases.map(c => ({ ...c, actual: buildKVString(c.input) }));
+
+  // Assert
+  for (const r of results) {
+    assertEqual(r.actual, r.expected, r.label);
+  }
+}
+
+// ─── buildAction ──────────────────────────────────────────────────────────────
+
+// ─── parseActionFromEmail ─────────────────────────────────────────────────────
+
+// ─── syncFilter ───────────────────────────────────────────────────────────────
