@@ -83,7 +83,7 @@ function buildKVString(parsed) {
  * @returns {Key_Map}
  */
 function parsePositionalString(str) {
-  const parts = str.split(','); 
+  const parts = str.split(', '); 
   const result = {};
 
   if (parts[0]) result.from            = parts[0];
@@ -121,19 +121,6 @@ function splitOutsideParentheses(str) {
   }
   if (current.trim()) tokens.push(current.trim());
   return tokens;
-}
-
-/**
- * Normalizes a label value to an array.
- * "Work" → ["Work"]
- * "[Work, Memes]" → ["Work", "Memes"]
- *
- * @param {string} val
- * @returns {string[]}
- */
-function parseLabels(val) {
-  const stripped = val.trim().replace(/^\[|\]$/g, '');
-  return stripped.split(',').map(l => l.trim()).filter(Boolean);
 }
 
 /**

@@ -4,7 +4,6 @@
 function runAllTests() {
   const tests = [
     test_parsePrimitive,
-    test_parseLabels,
     test_parsePositionalString_happyPath,
     test_parsePositionalString_invalidBooleans,
     test_parseLine_positionalRouting,
@@ -81,28 +80,6 @@ function test_parsePrimitive() {
 
   // Act
   const results = cases.map(c => ({ ...c, actual: parsePrimitive(c.input) }));
-
-  // Assert
-  for (const r of results) {
-    assertEqual(r.actual, r.expected, r.label);
-  }
-}
-
-// ─── parseLabels ─────────────────────────────────────────────────────────────
-
-/** Verifies label normalization: bare strings, bracket single/multi, nested labels, whitespace trimming. */
-function test_parseLabels() {
-  // Arrange
-  const cases = [
-    { input: 'Work',           expected: ['Work'],           label: 'bare label'       },
-    { input: '[Work]',         expected: ['Work'],           label: 'bracket single'   },
-    { input: '[Work, Memes]',  expected: ['Work', 'Memes'],  label: 'bracket multi'    },
-    { input: 'Finance/Alerts', expected: ['Finance/Alerts'], label: 'nested label'     },
-    { input: '  Work  ',       expected: ['Work'],           label: 'trims whitespace' },
-  ];
-
-  // Act
-  const results = cases.map(c => ({ ...c, actual: parseLabels(c.input) }));
 
   // Assert
   for (const r of results) {
