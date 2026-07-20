@@ -40,10 +40,9 @@
             <p class="card-hint">
               One entry per line. Labels are created if they don't exist.<br>
               <code>email@example.com, Label, skipInbox, markImportant</code> &nbsp;—&nbsp; shorthand (all fields positional)<br>
-              <code>from:email@example.com, label:Label, skipInbox:true, markImportant:true</code> &nbsp;—&nbsp; full key:value format<br>
-              To include multiple labels: <code>label:[Label One, Lable Two, etc]</code>
+              <code>from:email@example.com, label:Label, skipInbox:true, markImportant:true</code> &nbsp;—&nbsp; full key:value format</code>
             </p>
-            <textarea id="input" placeholder="careers@company.com, Work, true, true&#10;from:alerts@bank.com, label:[Finance, Alerts], skipInbox:true, hasAttachment:true""></textarea>
+            <textarea id="input" placeholder="careers@company.com, Work, true, true&#10;from:alerts@bank.com, label:Finance, skipInbox:true, hasAttachment:true""></textarea>
             <div class="validation-msg" id="validationMsg"></div>
             <div class="actions">
               <button class="btn-primary" id="runBtn" onclick="handleRun()">Apply Filters</button>
@@ -82,12 +81,12 @@
               </tr>
               <tr>
                 <td><code>query:</code></td>
-                <td>any text or phrase</td>
+                <td>any text or phrase — enclosed in parentheses</td>
                 <td>Filter by email content containing specific words/phrases</td>
               </tr>
               <tr>
                 <td><code>negatedQuery:</code></td>
-                <td>any text or phrase</td>
+                <td>any text or phrase — enclosed in parentheses</td>
                 <td>Filter by email content NOT containing specific words/phrases</td>
               </tr>
               <tr>
@@ -112,7 +111,7 @@
               </tr>
               <tr>
                 <td><code>label:</code></td>
-                <td>any label (to set multiple labels use the format <code>[label1, label2, etc]</code>)</td>
+                <td>any label</td>
                 <td>Apply a specific label to matching emails</td>
               </tr>
               <tr>

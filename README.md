@@ -10,15 +10,12 @@ A Google Apps Script web app for creating and managing Gmail filters in bulk. Fi
 - **Two input formats** — a quick positional shorthand for common cases, and a full key:value format for everything else
 - **Full Gmail filter criteria** — `from`, `to`, `subject`, `query`, `negatedQuery`, `hasAttachment`, `excludeChats`, `size`, `sizeComparison`
 - **Full Gmail filter actions** — `label`, `skipInbox`, `markImportant`, `markAsRead`, `star`, `neverMarkImportant`, `neverSpam`, `forward`, `category`
-- **Multiple labels per filter** — assign more than one label using bracket syntax: `label:[Work, Receipts]` 
 - **Auto-creates labels** — including nested labels like `Finance/Alerts`
 - **Skips duplicates** — if an identical filter already exists in Gmail, it won't create another
 - **Replaces outdated filters** — if a filter exists for the same sender but with different settings, deletes the old one and creates the updated one
 - **Backfill on demand** — filters added through the web UI can apply labels to existing matching threads; filters added directly to the sheet do not backfill
 - **Sheet-based storage** — add rows directly to the sheet to define filters without using the UI
 - **PropertiesService cache** — label IDs and filter criteria are cached locally so repeat syncs skip Gmail API calls for entries that haven't changed
-
-> BUG — July, 2026: Multiple label addition is not working properly
 
 ---
 
@@ -111,9 +108,6 @@ newsletters@service.com, Newsletters, true, false
 
 # skip inbox and mark important
 boss@work.com, Work, true, true
-
-# multiple labels using bracket syntax
-boss@work.com, [Work, Priority], true, true
 ```
 
 #### Key:value format
@@ -122,8 +116,6 @@ For filters that go beyond `from` + label, use explicit `key:value` pairs:
 
 ```
 from:boss@work.com, label:Work, skipInbox:true
-
-from:boss@work.com, label:[Work, Priority], skipInbox:true, markImportant:true
 
 subject:Invoice, label:Finance, markAsRead:true
 
@@ -134,7 +126,7 @@ from:newsletter@service.com, label:Newsletters, skipInbox:true, neverMarkImporta
 from:boss@work.com, query:budget, label:Work, skipInbox:true
 ```
 
-The format is auto-detected: any token containing `:` triggers key:value parsing. Both formats normalize `label` to an array internally, so `label:Work` and `label:[Work]` are equivalent.
+The format is auto-detected: any token containing `:` triggers key:value parsing.
 
 #### Deleting filters
 
@@ -157,8 +149,8 @@ These control which emails the filter matches:
 | `from` | string | Sender email address |
 | `to` | string | Recipient email address |
 | `subject` | string | Subject line contains |
-| `query` | string | Full Gmail search query |
-| `negatedQuery` | string | Exclude emails matching this query |
+| `query` | string | Full Gmail search query — must be enclosed in parentheses |
+| `negatedQuery` | string | Exclude emails matching this query — must be enclosed in parentheses |
 | `hasAttachment` | boolean | Only match emails with attachments |
 | `excludeChats` | boolean | Exclude chat messages |
 | `size` | number | Message size in bytes |
@@ -170,7 +162,7 @@ These control what happens to matched emails:
 
 | Key | Type | Description |
 |---|---|---|
-| `label` | string | Label(s) to apply; created if they don't exist |
+| `label` | string | Label to apply; created if it does not exist |
 | `skipInbox` | boolean | Archive the email (remove from inbox) |
 | `markImportant` | boolean | Mark as important |
 | `markAsRead` | boolean | Mark as read |
@@ -238,8 +230,7 @@ Parsing and interpreting user input
 - `parseLine(str)` — detects format and routes to the appropriate parser
 - `parseKVString(str)` — parses a key:value string into an object
 - `parsePositionalString(str)` — parses a positional CSV line into a KV object
-- `splitOutsideBrackets(str)` — splits on commas while preserving bracket contents
-- `parseLabels(val)` — normalizes a label value to an array
+- `splitOutsideParentheses(str)` — splits on commas while preserving contents in parentheses
 - `parsePrimitive(val)` — coerces strings to booleans or numbers
 - `buildCriteria(parsed)` — builds a Gmail API criteria object from a parsed KV object
 - `buildAction(parsed, labelIds)` — builds a Gmail API action object from a parsed KV action object and resolved label IDs

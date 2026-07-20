@@ -35,9 +35,6 @@ function parseKVString(str) {
     const val = token.slice(colon + 1).trim();
 
     switch (key) {
-      case 'label':
-        result[key] = parseLabels(val);
-        break;
       case 'skipInbox':
       case 'hasAttachment':
       case 'excludeChats':
