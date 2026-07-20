@@ -60,7 +60,7 @@ function parseKVString(str) {
 }
 
 /**
- * Turn a 
+ * Converts an object containing criteria or action keys into a key:value string
  * @param {Filter_Criteria | Action_Keys} parsed 
  * @return {string} - e.g. "from:boss@work.com, label:[Work, Memes], skipInbox:true"
  */
@@ -204,7 +204,7 @@ function buildAction(parsed, labelIds) {
  * Builds a KV action object from a Gmail API action object
  * 
  * @param {Filter_Action} action
- * @param {} idToNameMap
+ * @param {Object} idToNameMap - e.g. { "Label_123": "Work", "Label_456": "Social" }
  * @returns {Action_Keys}
  */
 function parseActionFromGmail(action, idToNameMap) {

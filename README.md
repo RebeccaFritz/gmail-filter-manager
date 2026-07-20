@@ -9,7 +9,7 @@ A Google Apps Script web app for creating and managing Gmail filters in bulk. Fi
 - **Web app UI** — add and view filters from any browser without opening the Apps Script editor
 - **Two input formats** — a quick positional shorthand for common cases, and a full key:value format for everything else
 - **Full Gmail filter criteria** — `from`, `to`, `subject`, `query`, `negatedQuery`, `hasAttachment`, `excludeChats`, `size`, `sizeComparison`
-- **Full Gmail filter actions** — `label`, `skipInbox`, `markImportant`, `markAsRead`, `star`, `neverMarkImportant`, `neverSpam`, `forwardTo`, `category`
+- **Full Gmail filter actions** — `label`, `skipInbox`, `markImportant`, `markAsRead`, `star`, `neverMarkImportant`, `neverSpam`, `forward`, `category`
 - **Multiple labels per filter** — assign more than one label using bracket syntax: `label:[Work, Receipts]` 
 - **Auto-creates labels** — including nested labels like `Finance/Alerts`
 - **Skips duplicates** — if an identical filter already exists in Gmail, it won't create another
@@ -177,7 +177,7 @@ These control what happens to matched emails:
 | `star` | boolean | Star the email |
 | `neverMarkImportant` | boolean | Never mark as important |
 | `neverSpam` | boolean | Never send to spam |
-| `forwardTo` | string | Forward to this email address |
+| `forward` | string | Forward to this email address |
 | `category` | string | Assign to a category tab (e.g. `promotions`) |
 
 ### Adding filters directly to the sheet
@@ -226,7 +226,7 @@ Web app endpoints and UI-facing functions
 - `include()` — used to inject CSS and frontend JavaScript into `Index.html`
 - `addFiltersFromUI(rawInput)` — called by the web UI; parses input, creates filters, optionally backfills existing threads
 - `getFiltersForUI()` — called by the web UI to populate the View Filters table
-- `syncFilters()` — syncs all sheet rows to Gmail
+- `syncFilters()` — bidirectionally syncs all filters in the sheet with the Gmail account
 
 ### `Cache.gs` 
 `PropertiesService` caching 
@@ -242,7 +242,9 @@ Parsing and interpreting user input
 - `parseLabels(val)` — normalizes a label value to an array
 - `parsePrimitive(val)` — coerces strings to booleans or numbers
 - `buildCriteria(parsed)` — builds a Gmail API criteria object from a parsed KV object
-- `buildAction(parsed, labelIds)` — builds a Gmail API action object from a parsed KV object and resolved label IDs
+- `buildAction(parsed, labelIds)` — builds a Gmail API action object from a parsed KV action object and resolved label IDs
+- `buildKVString(parsed)` — converts an object containing criteria or action keys into a key:value string
+- `parseActionFromEmail(action, idToNameMap)` — Builds a KV action object from a Gmail API action object
 
 ### `FilterService.gs` 
 Contains the application's core workflow 
@@ -254,6 +256,7 @@ Gmail-specific operations
 - `getOrCreateLabel(labelName)` — Returns the ID of a Gmail label by name, creating it if it doesn't exists
 - `processExistingFilters(from, labelIds, parsedActions)` — checks for existing Gmail filters; keeps exact matches, deletes outdated ones
 - `isDesiredFilter(match, labelIds, parsedActions)` — compares a filter object against desired criteria
+- `syncGmailToSheet(rows)` — Gets every filter object from Gmail and ensures each one has a matching row in the sheet
 
 ### `Index.html`, `Script.html`, and `Stylesheet.html` 
 The web app UI. Two tabs:
@@ -269,6 +272,7 @@ All Google sheet operations — no Gmail logic lives here:
 - `writeFilterToSheet(criteriaStr, actionsStr, backfill)` — appends a new row; skips duplicates
 - `markSyncedInSheet(criteriaStr)` — updates the Last Synced timestamp for a given row
 - `filterExistsInSheet(criteriaStr)` — returns true if a row with that criteria string already exists
+- `syncSheetToGmail(rows)` — Reads every row from the sheet and ensures a matching Gmail label and filter exists for each one
 
 ### `Constants.gs` 
 Shared constants and configuration 
