@@ -25,6 +25,7 @@ function parseLine(str) {
  * @returns {Key_Map}
  */
 function parseKVString(str) {
+  console.warn('At this time, parseKVString does not check validity of "category:" inputs')
   const tokens = splitOutsideParentheses(str);
   const result = {};
 
@@ -162,6 +163,27 @@ function buildAction(parsed, labelId) {
   const addLabelIds = labelId !== undefined ? [labelId] : [];
   const removeLabelIds = [];
 
+  const category = parsed.category;
+  if (category) {
+    switch (category) {
+      case "personal":
+        addLabelIds.push('CATEGORY_PERSONAL');
+        break;
+      case "updates":
+        addLabelIds.push('CATEGORY_UPDATES');
+        break;
+      case "forums":
+        addLabelIds.push('CATEGORY_FORUMS');
+        break;
+      case "social":
+        addLabelIds.push('CATEGORY_SOCIAL');
+        break;
+      default:
+        console.warn(`Unknown category: ${category}`);
+    }
+  }
+
+  if (parsed.delete)             addLabelIds.push('TRASH');
   if (parsed.skipInbox)          removeLabelIds.push('INBOX');
   if (parsed.markImportant)      addLabelIds.push('IMPORTANT');
   if (parsed.neverMarkImportant) removeLabelIds.push('IMPORTANT');
@@ -199,14 +221,19 @@ function parseActionFromGmail(action, idToNameMap) {
         parsedAction.markImportant = true;
         break;
       case `CATEGORY_PERSONAL`:
+        parsedAction.category = 'personal';
+        break;
       case `CATEGORY_UPDATES`:
+        parsedAction.category = 'updates';
+        break;
       case `CATEGORY_SOCIAL`:
+        parsedAction.category = 'social';
+        break;
       case `CATEGORY_FORUMS`:
-        console.warn('parseActionFromGmail is not implemented for the ' + label + ' system label');
+        parsedAction.category = 'forums';
         break;
       default:
-        parsedAction.label = [];
-        parsedAction.label.push(idToNameMap[label]);
+        if (!parsedAction.label) parsedAction.label = idToNameMap[label]; 
     }
   }
 
