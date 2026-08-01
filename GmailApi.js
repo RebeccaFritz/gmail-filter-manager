@@ -41,16 +41,16 @@ function getOrCreateLabel(labelName) {
  * Returns true if an exact match was found (caller should skip creating a duplicate).
  *
  * @param {string}   from
- * @param {string[]} labelIds
+ * @param {string} labelId
  * @param {Object}   parsedActions
  * @returns {boolean}
  */
-function processExistingFilters(from, labelIds, parsedActions) {
+function processExistingFilters(from, labelId, parsedActions) {
   // 1. Cache fast-path
   const cached = getCachedFilter(from);
   if (cached) {
     const exactMatch =
-      JSON.stringify(cached.labelIds)      === JSON.stringify(labelIds) &&
+      JSON.stringify(cached.labelId)      === JSON.stringify(labelId) &&
       JSON.stringify(cached.parsedActions) === JSON.stringify(parsedActions);
 
     if (exactMatch) {
@@ -73,12 +73,13 @@ function processExistingFilters(from, labelIds, parsedActions) {
 
   let foundExactMatch = false;
   for (const match of matches) {
-    if (!foundExactMatch && isDesiredFilter(match, labelIds, parsedActions)) {
+    if (!foundExactMatch && isDesiredFilter(match, labelId, parsedActions)) {
       foundExactMatch = true;
-      cacheFilter(from, labelIds, parsedActions);
+      cacheFilter(from, labelId, parsedActions);
     } else {
-      Gmail.Users.Settings.Filters.remove(userId, match.id);
-      console.log(`  🗑️ Deleted stale filter for ${from} (ID: ${match.id})`);
+      console.warn('July 2026 | filter deletion has been disabled due to bugs in the filter matching process')
+      //Gmail.Users.Settings.Filters.remove(userId, match.id);
+      //console.log(`  🗑️ Deleted stale filter for ${from} (ID: ${match.id})`);
     }
   }
 
@@ -89,19 +90,20 @@ function processExistingFilters(from, labelIds, parsedActions) {
  * Returns true if an existing Gmail filter object matches all desired criteria.
  *
  * @param {Object}   match
- * @param {string[]} labelIds
+ * @param {string} labelId
  * @param {Object}   parsedActions
  * @returns {boolean}
  */
-function isDesiredFilter(match, labelIds, parsedActions) {
+function isDesiredFilter(match, labelId, parsedActions) {
+  console.warn('Bug alert — July 2026 | isDesiredFilter is only checking against markImportant, skipInbox, and label')
   const addIds    = match.action.addLabelIds    || [];
   const removeIds = match.action.removeLabelIds || [];
 
-  const allLabelsPresent = labelIds.every(id => addIds.includes(id));
+  const userLabelCorrect = addIds.includes(labelId);
   const importantCorrect = addIds.includes('IMPORTANT')  === (parsedActions.markImportant === true);
   const inboxCorrect     = removeIds.includes('INBOX')   === (parsedActions.skipInbox     === true);
 
-  return allLabelsPresent && importantCorrect && inboxCorrect;
+  return userLabelCorrect && importantCorrect && inboxCorrect;
 }
 
 /**

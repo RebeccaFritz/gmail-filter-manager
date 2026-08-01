@@ -21,7 +21,7 @@ function cacheLabelId(labelName, labelId) {
 /**
  * Returns the cached filter data for a given sender, or null if not cached.
  * @param {string} from
- * @returns {{ labelIds: string[], parsedActions: Object }|null}
+ * @returns {{ labelId: string, parsedActions: Object }|null}
  */
 function getCachedFilter(from) {
   const raw = props.getProperty(`filter:${from}`);
@@ -31,10 +31,11 @@ function getCachedFilter(from) {
 /**
  * Stores filter criteria for a sender in the cache.
  * @param {string}   from
- * @param {string[]} labelIds
+ * @param {string} labelId
  * @param {Object}   parsedActions
  */
 function cacheFilter(from, labelIds, parsedActions) {
+  console.warn('Bug alert — July 2026 | cacheFilter is caching the wrong data');
   props.setProperty(`filter:${from}`, JSON.stringify({ labelIds, parsedActions }));
 }
 

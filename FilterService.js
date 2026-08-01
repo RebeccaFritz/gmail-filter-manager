@@ -19,22 +19,20 @@ function applyFilter(criteriaStr, actionsStr, backfill = false) {
   const criteria = buildCriteria(parsedCriteria);
   const action   = buildAction(parsedActions, labelId);
 
-  if (processExistingFilters(parsedCriteria.from, labelIds, parsedActions)) {
+  if (processExistingFilters(parsedCriteria.from, labelId, parsedActions)) {
     writeFilterToSheet(criteriaStr, actionsStr, backfill);
     return { status: 'skipped', message: 'Filter already exists' };
   }
 
   Gmail.Users.Settings.Filters.create({ criteria, action }, userId);
-  cacheFilter(parsedCriteria.from, labelIds, parsedActions);
+  cacheFilter(parsedCriteria.from, labelId, parsedActions);
 
   let backfilledCount = 0;
   if (backfill && parsedCriteria.from) {
     const threads = GmailApp.search('from:' + parsedCriteria.from);
     if (threads.length > 0) {
-      for (const labelName of labels) {
-        const gmailLabel = GmailApp.getUserLabelByName(labelName);
-        if (gmailLabel) gmailLabel.addToThreads(threads);
-      }
+      const gmailLabel = GmailApp.getUserLabelByName(label);
+      if (gmailLabel) gmailLabel.addToThreads(threads);
       if (parsedActions.skipInbox) GmailApp.moveThreadsToArchive(threads);
     }
     backfilledCount = threads.length;
@@ -62,9 +60,9 @@ function deleteFilter(parsed) {
 
   const key    = parsed.from ? 'from' : 'to';
   const val    = parsed.from || parsed.to;
-  const labels = parsed.label || [];
+  const label = parsed.label;
 
-  const labelIds = labels.map(name => getOrCreateLabel(name));
+  const labelId = getOrCreateLabel(label);
 
   const response        = Gmail.Users.Settings.Filters.list(userId);
   const existingFilters = (response && response.filter) ? response.filter : [];
@@ -74,7 +72,7 @@ function deleteFilter(parsed) {
     return { status: 'skipped', message: `No filter found for ${key}:${val}` };
   }
 
-  const toDelete = matches.filter(f => isDesiredFilter(f, labelIds, parsed));
+  const toDelete = matches.filter(f => isDesiredFilter(f, labelId, parsed));
 
   if (toDelete.length === 0) {
     return { status: 'skipped', message: `No filter matched the specified labels/actions for ${key}:${val}` };

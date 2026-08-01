@@ -25,7 +25,7 @@ function parseLine(str) {
  * @returns {Key_Map}
  */
 function parseKVString(str) {
-  console.warn('At this time, parseKVString does not check validity of "category:" inputs')
+  console.warn('Bug alert — July 2026 | parseKVString does not check validity of "category:" inputs')
   const tokens = splitOutsideParentheses(str);
   const result = {};
 
