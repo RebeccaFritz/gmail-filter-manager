@@ -141,6 +141,7 @@ function writeFilterToSheet(criteriaStr, actionsStr, backfill) {
  * @param {string} criteriaStr
  */
 function markSyncedInSheet(criteriaStr) {
+  console.warn('Bug alert — July 2026 | markSyncedInSheet marks the first row found with the same criteria string. It does not check the action.')
   const sheet   = getOrCreateSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < DATA_START_ROW) return;

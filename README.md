@@ -112,7 +112,7 @@ boss@work.com, Work, true, true
 
 #### Key:value format
 
-For filters that go beyond `from` + label, use explicit `key:value` pairs:
+For filters that go beyond `from` + `label`, use explicit `key:value` pairs:
 
 ```
 from:boss@work.com, label:Work, skipInbox:true
@@ -170,7 +170,7 @@ These control what happens to matched emails:
 | `neverMarkImportant` | boolean | Never mark as important |
 | `neverSpam` | boolean | Never send to spam |
 | `forward` | string | Forward to this email address |
-| `category` | string | Assign to a category tab (e.g. `promotions`) |
+| `category` | string | Assign to a category tab (`personal`, `social`, `forums`, or `updates`) |
 
 ### Adding filters directly to the sheet
 
@@ -218,7 +218,7 @@ Web app endpoints and UI-facing functions
 - `include()` — used to inject CSS and frontend JavaScript into `Index.html`
 - `addFiltersFromUI(rawInput)` — called by the web UI; parses input, creates filters, optionally backfills existing threads
 - `getFiltersForUI()` — called by the web UI to populate the View Filters table
-- `syncFilters()` — bidirectionally syncs all filters in the sheet with the Gmail account
+- `syncFilters()` — bidirectionally sync the filters between the Google sheet and the Gmail account
 
 ### `Cache.gs` 
 `PropertiesService` caching 
@@ -229,13 +229,13 @@ Web app endpoints and UI-facing functions
 Parsing and interpreting user input 
 - `parseLine(str)` — detects format and routes to the appropriate parser
 - `parseKVString(str)` — parses a key:value string into an object
+- `buildKVString(parsed)` — converts an object containing criteria or action keys into a key:value string
 - `parsePositionalString(str)` — parses a positional CSV line into a KV object
 - `splitOutsideParentheses(str)` — splits on commas while preserving contents in parentheses
 - `parsePrimitive(val)` — coerces strings to booleans or numbers
 - `buildCriteria(parsed)` — builds a Gmail API criteria object from a parsed KV object
 - `buildAction(parsed, labelIds)` — builds a Gmail API action object from a parsed KV action object and resolved label IDs
-- `buildKVString(parsed)` — converts an object containing criteria or action keys into a key:value string
-- `parseActionFromEmail(action, idToNameMap)` — Builds a KV action object from a Gmail API action object
+- `parseActionFromGmail(action, idToNameMap)` — Builds a KV action object from a Gmail API action object
 
 ### `FilterService.gs` 
 Contains the application's core workflow 
@@ -245,8 +245,8 @@ Contains the application's core workflow
 ### `GmailApi.gs` 
 Gmail-specific operations 
 - `getOrCreateLabel(labelName)` — Returns the ID of a Gmail label by name, creating it if it doesn't exists
-- `processExistingFilters(from, labelIds, parsedActions)` — checks for existing Gmail filters; keeps exact matches, deletes outdated ones
-- `isDesiredFilter(match, labelIds, parsedActions)` — compares a filter object against desired criteria
+- `processExistingFilters(from, labelId, parsedActions)` — checks for existing Gmail filters; keeps exact matches, deletes outdated ones
+- `isDesiredFilter(match, labelId, parsedActions)` — compares a filter object against desired criteria
 - `syncGmailToSheet(rows)` — Gets every filter object from Gmail and ensures each one has a matching row in the sheet
 
 ### `Index.html`, `Script.html`, and `Stylesheet.html` 
