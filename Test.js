@@ -12,6 +12,7 @@ function runAllTests() {
     test_parseLine_delRouting,
     test_buildKVString,
     test_buildAction,
+    test_parseActionFromGmail,
   ];
 
   let passed = 0, failed = 0;
@@ -207,8 +208,8 @@ function test_parseLine_kvAllKeys() {
       label:    'from, size (parsed as number), sizeComparison, neverMarkImportant',
     },
     {
-      input:    'from:boss@work.com, neverSpam:true, category:promotions',
-      expected: { from: 'boss@work.com', neverSpam: true, category: 'promotions' },
+      input:    'from:boss@work.com, neverSpam:true, category:personal',
+      expected: { from: 'boss@work.com', neverSpam: true, category: 'personal' },
       label:    'from, neverSpam, category',
     },
     {
@@ -322,6 +323,7 @@ function test_buildKVString() {
     },
     {
       input:    {
+        category : 'social',
         delete: false,
         forward: 'boss@work.com',
         label: 'Work',
@@ -332,7 +334,7 @@ function test_buildKVString() {
         skipInbox: true,
         star: true
       },
-      expected: 'delete:false, forward:boss@work.com, label:Work, markAsRead:true, markImportant:true, neverMarkImportant:true, neverSpam:true, skipInbox:true, star:true',
+      expected: 'category:social, delete:false, forward:boss@work.com, label:Work, markAsRead:true, markImportant:true, neverMarkImportant:true, neverSpam:true, skipInbox:true, star:true',
       label:    'buildKVString for Action_Keys object',
     },
   ];
@@ -368,11 +370,12 @@ function test_buildAction() {
     },
     {
       input: [{
+        category : 'personal',
         markImportant: true,
         star: true,
       }, 'Label_123'],
       expected: {
-        addLabelIds: ['Label_123', 'IMPORTANT', 'STARRED']
+        addLabelIds: ['Label_123', 'CATEGORY_PERSONAL', 'IMPORTANT', 'STARRED']
       },
       label:    'buildAction test — add label only',
     },
@@ -400,5 +403,52 @@ function test_buildAction() {
 }
 
 // ─── parseActionFromGmail ─────────────────────────────────────────────────────
+function test_parseActionFromGmail() {
+  // Arrange
+  const cases = [
+    {
+      input: [
+        {
+          addLabelIds : ['IMPORTANT', "Label_123", 'CATEGORY_PERSONAL'],
+          removeLabelIds : ['INBOX', 'SPAM'],
+          forward : 'boss@work.com',
+        },
+        { "Label_123": "Work", "Label_456": "Social" }
+      ],
+      expected: {
+        markImportant : true,
+        label : 'Work',
+        category : 'personal',
+        skipInbox : true,
+        neverSpam : true,
+        forward : 'boss@work.com',
+      },
+      label:    'parseActionFromGmail test one',
+    },
+    {
+      input: [
+        {
+          addLabelIds : ['TRASH', 'STARRED', 'CATEGORY_UPDATES'],
+          removeLabelIds : ['IMPORTANT', 'UNREAD'],
+        },
+        { "Label_123": "Work", "Label_456": "Social" }
+      ],
+      expected: {
+        delete : true,
+        star : true,
+        category : 'updates',
+        neverMarkImportant : true,
+        markAsRead : true,
+      },
+      label:    'parseActionFromGmail test two',
+    },
+  ];
 
-// ─── syncFilter ───────────────────────────────────────────────────────────────
+  // Act
+  const results = cases.map(c => ({ ...c, actual: parseActionFromGmail(c.input[0], c.input[1]) }));
+
+  // Assert
+  for (const r of results) {
+    assertEqual(r.actual, r.expected, r.label);
+  }
+}
